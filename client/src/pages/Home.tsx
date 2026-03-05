@@ -70,7 +70,14 @@ export default function Home() {
   // Framer Motion horizontal scroll setup
   // We have 5 sections total (Intro, Arch, Cyber, Soft, Contact). Width = 500vw.
   const { scrollYProgress } = useScroll({ target: targetRef });
+  
+  // Responsive transform: use "0%" to "-80%" on desktop, but might need adjustment for mobile
+  // Since each section is 100vw, -80% of 500vw is -400vw, which lands on the last section.
   const x = useTransform(scrollYProgress, [0, 1], ["0%", "-80%"]);
+
+  // Mobile responsiveness: Check if we are on mobile to potentially disable horizontal scroll
+  // and just use normal vertical scroll, or keep it if it feels cinematic.
+  // For now, we'll keep the horizontal scroll but ensure the sections are properly sized.
 
   // Contact Form setup
   const contactMutation = useSubmitContact();
@@ -153,8 +160,8 @@ export default function Home() {
             <section className="w-[100vw] h-full relative overflow-hidden flex items-center p-8 md:p-24 bg-blueprint-grid">
               {/* Background Image with Overlay */}
               <div className="absolute inset-0 z-0">
-                <img src={archTheme} alt="Architecture Theme" className="w-full h-full object-cover opacity-20" />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#0a192f] via-[#0a192f]/90 to-[#0a192f]/50" />
+                <img src={archTheme} alt="Architecture Theme" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0a192f] via-[#0a192f]/80 to-[#0a192f]/40" />
               </div>
 
               <div className="relative z-10 w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
@@ -202,8 +209,8 @@ export default function Home() {
             {/* 3. CYBERSECURITY WORLD */}
             <section className="w-[100vw] h-full relative overflow-hidden flex items-center p-8 md:p-24 bg-cyber-grid">
               <div className="absolute inset-0 z-0">
-                <img src={cyberTheme} alt="Cybersecurity Theme" className="w-full h-full object-cover opacity-15" />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#000000] via-[#000000]/95 to-[#000000]/80" />
+                <img src={cyberTheme} alt="Cybersecurity Theme" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#000000] via-[#000000]/80 to-[#000000]/40" />
                 {/* Vignette effect */}
                 <div className="absolute inset-0 shadow-[inset_0_0_150px_rgba(0,0,0,1)] pointer-events-none" />
               </div>
@@ -257,8 +264,8 @@ export default function Home() {
             {/* 4. SOFTWARE ENGINEERING WORLD */}
             <section className="w-[100vw] h-full relative overflow-hidden flex items-center p-8 md:p-24">
               <div className="absolute inset-0 z-0">
-                <img src={softwareTheme} alt="Software Theme" className="w-full h-full object-cover opacity-20" />
-                <div className="absolute inset-0 bg-gradient-to-br from-[#170f2e] via-[#0f0920] to-black" />
+                <img src={softwareTheme} alt="Software Theme" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#170f2e]/90 via-[#0f0920]/90 to-black/90" />
               </div>
 
               <div className="relative z-10 w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
