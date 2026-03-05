@@ -106,7 +106,7 @@ export default function Home() {
       </div>
 
       {/* The Scroll Container */}
-      <div ref={targetRef} className="h-[500vh]">
+      <div ref={targetRef} className="h-[500vh] relative">
         <div className="sticky top-0 h-screen overflow-hidden">
           <motion.div style={{ x }} className="flex w-[500vw] h-full">
             
