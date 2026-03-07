@@ -1,9 +1,11 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { ChevronRight, Download, Mail, ArrowRight, Github, Linkedin, Briefcase, MonitorPlay, PencilRuler, Code2, ShieldAlert } from "lucide-react";
 import archTheme from "@assets/Architecture-theam_1772726721753.jpg";
 import cyberTheme from "@assets/cyber-security-theam_1772726721642.jpg";
 import softwareTheme from "@assets/Software-Engineer-theam_1772726721692.jpeg";
+import bunga1 from "@assets/Screenshot_20260307_180405_WhatsAppBusiness_1772896024709.jpg";
+import bunga2 from "@assets/Screenshot_20260307_180414_WhatsAppBusiness_1772896024768.jpg";
 import { ProjectModal, type ProjectData } from "@/components/ProjectModal";
 import { InteractiveTerminal } from "@/components/InteractiveTerminal";
 import { SkillBar } from "@/components/SkillBar";
@@ -20,13 +22,14 @@ const archProjects: ProjectData[] = [
     description: "A complete architectural design and rendering for a sustainable, minimalist villa focusing on natural light and raw materials.",
     technologies: ["AutoCAD", "Revit", "Lumion", "Photoshop"],
     theme: "arch",
-    image: archTheme, // Using theme image as placeholder
+    image: archTheme,
   },
   {
-    title: "Urban Commercial Complex",
-    description: "Mixed-use commercial building design optimizing flow and space utilization in a dense urban environment.",
-    technologies: ["SketchUp", "V-Ray", "Rhino"],
+    title: "Mua Bungalow Project",
+    description: "Contemporary bungalow design featuring clean lines, spacious interior, and premium finishes. A modern residential masterpiece blending functionality with aesthetic appeal.",
+    technologies: ["Revit", "SketchUp", "3D Visualization", "CAD"],
     theme: "arch",
+    images: [bunga1, bunga2],
   }
 ];
 
@@ -64,20 +67,34 @@ const softProjects: ProjectData[] = [
 
 export default function Home() {
   const targetRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
   const { toast } = useToast();
   
   // Framer Motion horizontal scroll setup
-  // We have 5 sections total (Intro, Arch, Cyber, Soft, Contact). Width = 500vw.
   const { scrollYProgress } = useScroll({ target: targetRef });
-  
-  // Responsive transform: use "0%" to "-80%" on desktop, but might need adjustment for mobile
-  // Since each section is 100vw, -80% of 500vw is -400vw, which lands on the last section.
   const x = useTransform(scrollYProgress, [0, 1], ["0%", "-80%"]);
 
-  // Mobile responsiveness: Check if we are on mobile to potentially disable horizontal scroll
-  // and just use normal vertical scroll, or keep it if it feels cinematic.
-  // For now, we'll keep the horizontal scroll but ensure the sections are properly sized.
+  // Enhanced scroll/swipe handling for better mobile and desktop UX
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (!containerRef.current) return;
+      
+      // Only handle horizontal scroll if Alt key is pressed or on trackpad
+      // This allows natural vertical scrolling while supporting horizontal scroll
+      const isTrackpad = Math.abs(e.deltaY) < 50 && Math.abs(e.deltaX) < 50;
+      if ((e.altKey || isTrackpad) && Math.abs(e.deltaX) > 0) {
+        e.preventDefault();
+        window.scrollBy({
+          left: e.deltaX * 2,
+          behavior: 'smooth'
+        });
+      }
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    return () => window.removeEventListener('wheel', handleWheel);
+  }, []);
 
   // Contact Form setup
   const contactMutation = useSubmitContact();
@@ -99,7 +116,7 @@ export default function Home() {
   });
 
   return (
-    <div className="bg-black text-white selection:bg-white/30">
+    <div ref={containerRef} className="bg-black text-white selection:bg-white/30 w-full overflow-x-hidden">
       
       {/* Global Navigation Indicator (Optional, but adds to the cinematic feel) */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 hidden md:flex gap-4 p-4 rounded-full bg-black/50 backdrop-blur-md border border-white/10">
@@ -113,7 +130,7 @@ export default function Home() {
       </div>
 
       {/* The Scroll Container */}
-      <div ref={targetRef} className="h-[500vh] relative">
+      <div ref={targetRef} className="h-[500vh] relative w-full">
         <div className="sticky top-0 h-screen overflow-hidden">
           <motion.div style={{ x }} className="flex w-[500vw] h-full">
             

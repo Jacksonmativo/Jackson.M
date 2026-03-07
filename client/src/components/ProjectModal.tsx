@@ -1,12 +1,13 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ExternalLink, Github } from "lucide-react";
-import { useEffect } from "react";
+import { X, ExternalLink, Github, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export interface ProjectData {
   title: string;
   description: string;
   technologies: string[];
   image?: string;
+  images?: string[];
   demoUrl?: string;
   githubUrl?: string;
   theme: "arch" | "cyber" | "soft";
@@ -18,15 +19,21 @@ interface ProjectModalProps {
 }
 
 export function ProjectModal({ project, onClose }: ProjectModalProps) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
   // Prevent scrolling on body when modal is open
   useEffect(() => {
     if (project) {
       document.body.style.overflow = 'hidden';
+      setCurrentImageIndex(0);
     } else {
       document.body.style.overflow = 'unset';
     }
     return () => { document.body.style.overflow = 'unset'; };
   }, [project]);
+
+  const images = project?.images || (project?.image ? [project.image] : []);
+  const hasMultipleImages = images.length > 1;
 
   const getThemeColors = (theme: string) => {
     switch(theme) {
@@ -66,14 +73,47 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
                 {project.title}
               </h2>
               
-              {project.image && (
-                <div className="w-full h-64 sm:h-80 md:h-96 mt-6 rounded-xl overflow-hidden border border-white/10 relative group">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10" />
-                  <img 
-                    src={project.image} 
-                    alt={project.title}
-                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
-                  />
+              {images.length > 0 && (
+                <div className="w-full mt-6 rounded-xl overflow-hidden border border-white/10 relative group">
+                  <div className="w-full h-64 sm:h-80 md:h-96 relative">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10" />
+                    <motion.img 
+                      key={currentImageIndex}
+                      src={images[currentImageIndex]} 
+                      alt={`${project.title} - ${currentImageIndex + 1}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                    />
+                  </div>
+                  
+                  {hasMultipleImages && (
+                    <>
+                      <button 
+                        onClick={() => setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/50 hover:bg-black/80 transition-colors"
+                      >
+                        <ChevronLeft className="w-6 h-6 text-white" />
+                      </button>
+                      <button 
+                        onClick={() => setCurrentImageIndex((prev) => (prev + 1) % images.length)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/50 hover:bg-black/80 transition-colors"
+                      >
+                        <ChevronRight className="w-6 h-6 text-white" />
+                      </button>
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+                        {images.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setCurrentImageIndex(i)}
+                            className={`w-2 h-2 rounded-full transition-all ${i === currentImageIndex ? 'bg-white w-6' : 'bg-white/40'}`}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
