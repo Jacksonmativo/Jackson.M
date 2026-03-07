@@ -9,6 +9,7 @@ import bunga2 from "@assets/Screenshot_20260307_180414_WhatsAppBusiness_17728960
 import { ProjectModal, type ProjectData } from "@/components/ProjectModal";
 import { InteractiveTerminal } from "@/components/InteractiveTerminal";
 import { SkillBar } from "@/components/SkillBar";
+import { ProjectCarousel } from "@/components/ProjectCarousel";
 import { useSubmitContact } from "@/hooks/use-contact";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -202,23 +203,12 @@ export default function Home() {
                   </div>
                 </motion.div>
 
-                <div className="grid gap-6">
-                  {archProjects.map((project, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, y: 30 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: i * 0.2 }}
-                      onClick={() => setSelectedProject(project)}
-                      className="group cursor-pointer glass-panel p-6 rounded-2xl border-blue-400/20 hover:border-blue-400/60 transition-all hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(96,165,250,0.15)]"
-                    >
-                      <h3 className="text-2xl font-bold text-white mb-2 font-display">{project.title}</h3>
-                      <p className="text-blue-100/60 line-clamp-2 text-sm">{project.description}</p>
-                      <div className="mt-4 flex items-center text-blue-400 font-mono text-sm group-hover:gap-3 transition-all">
-                        View Details <ArrowRight className="w-4 h-4 ml-2" />
-                      </div>
-                    </motion.div>
-                  ))}
+                <div className="w-full">
+                  <ProjectCarousel 
+                    projects={archProjects} 
+                    theme="arch" 
+                    onProjectClick={setSelectedProject}
+                  />
                 </div>
               </div>
             </section>
@@ -241,17 +231,12 @@ export default function Home() {
                 >
                   <InteractiveTerminal />
                   
-                  <div className="grid grid-cols-2 gap-4 mt-8">
-                    {cyberProjects.map((project, i) => (
-                      <div 
-                        key={i}
-                        onClick={() => setSelectedProject(project)}
-                        className="cursor-pointer border border-[#22c55e]/30 bg-[#22c55e]/5 p-4 rounded-lg hover:bg-[#22c55e]/10 transition-colors"
-                      >
-                        <h4 className="text-[#22c55e] font-mono mb-1">{project.title}</h4>
-                        <p className="text-white/40 text-xs line-clamp-2">{project.description}</p>
-                      </div>
-                    ))}
+                  <div className="mt-8 w-full">
+                    <ProjectCarousel 
+                      projects={cyberProjects} 
+                      theme="cyber" 
+                      onProjectClick={setSelectedProject}
+                    />
                   </div>
                 </motion.div>
 
@@ -308,29 +293,15 @@ export default function Home() {
                   </div>
                 </motion.div>
 
-                <div className="grid gap-6 relative">
+                <div className="relative w-full">
                   {/* Decorative code lines floating behind */}
                   <div className="absolute -inset-10 border border-purple-500/10 rounded-[3rem] -z-10 bg-gradient-to-br from-purple-500/5 to-transparent backdrop-blur-3xl hidden md:block transform rotate-3" />
                   
-                  {softProjects.map((project, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.5, delay: i * 0.2 }}
-                      onClick={() => setSelectedProject(project)}
-                      className="group cursor-pointer glass-panel p-8 rounded-2xl border-purple-400/20 hover:border-purple-400/60 transition-all hover:shadow-[0_0_40px_rgba(167,139,250,0.15)] relative overflow-hidden"
-                    >
-                      <div className="absolute top-0 left-0 w-1 h-full bg-purple-500 scale-y-0 group-hover:scale-y-100 transition-transform origin-top" />
-                      <h3 className="text-2xl font-bold text-white mb-2 font-display">{project.title}</h3>
-                      <p className="text-purple-100/60 text-sm mb-4">{project.description}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {project.technologies.slice(0,3).map(t => (
-                          <span key={t} className="text-xs text-purple-300 font-mono">{t}</span>
-                        ))}
-                      </div>
-                    </motion.div>
-                  ))}
+                  <ProjectCarousel 
+                    projects={softProjects} 
+                    theme="soft" 
+                    onProjectClick={setSelectedProject}
+                  />
                 </div>
               </div>
             </section>
