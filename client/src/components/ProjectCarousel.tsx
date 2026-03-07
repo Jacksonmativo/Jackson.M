@@ -73,8 +73,27 @@ export function ProjectCarousel({ projects, theme, onProjectClick }: ProjectCaro
 
   if (projects.length === 0) return null;
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Prevent touch from bubbling to main scroll container
+    e.stopPropagation();
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    // Prevent wheel events from bubbling to main scroll
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      const atStart = scrollLeft === 0;
+      const atEnd = scrollLeft >= scrollWidth - clientWidth - 10;
+
+      // Only prevent default if carousel can scroll in the wheel direction
+      if ((e.deltaX > 0 && !atEnd) || (e.deltaX < 0 && !atStart)) {
+        e.preventDefault();
+      }
+    }
+  };
+
   return (
-    <div className="relative group">
+    <div className="relative group carousel-container">
       {/* Scroll Buttons */}
       {canScrollLeft && (
         <button
@@ -97,6 +116,8 @@ export function ProjectCarousel({ projects, theme, onProjectClick }: ProjectCaro
       <div
         ref={scrollContainerRef}
         onScroll={checkScroll}
+        onTouchStart={handleTouchStart}
+        onWheel={handleWheel}
         className="flex gap-6 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
         style={{
           scrollBehavior: "smooth",

@@ -76,24 +76,20 @@ export default function Home() {
   const { scrollYProgress } = useScroll({ target: targetRef });
   const x = useTransform(scrollYProgress, [0, 1], ["0%", "-80%"]);
 
-  // Enhanced scroll/swipe handling for better mobile and desktop UX
+  // Prevent carousel scroll from affecting main horizontal scroll
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
-      if (!containerRef.current) return;
+      // Check if the wheel event is coming from a carousel
+      const target = e.target as HTMLElement;
+      const isCarousel = target.closest('.carousel-container') !== null;
       
-      // Only handle horizontal scroll if Alt key is pressed or on trackpad
-      // This allows natural vertical scrolling while supporting horizontal scroll
-      const isTrackpad = Math.abs(e.deltaY) < 50 && Math.abs(e.deltaX) < 50;
-      if ((e.altKey || isTrackpad) && Math.abs(e.deltaX) > 0) {
-        e.preventDefault();
-        window.scrollBy({
-          left: e.deltaX * 2,
-          behavior: 'smooth'
-        });
+      // If it's from a carousel, let it scroll naturally without interference
+      if (isCarousel) {
+        return;
       }
     };
 
-    window.addEventListener('wheel', handleWheel, { passive: false });
+    window.addEventListener('wheel', handleWheel, { passive: true });
     return () => window.removeEventListener('wheel', handleWheel);
   }, []);
 
