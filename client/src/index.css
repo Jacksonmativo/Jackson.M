@@ -45,6 +45,11 @@
   .text-glow-soft {
     text-shadow: 0 0 20px hsla(var(--soft-purple) / 0.6);
   }
+
+  /* Smooth scrolling for individual career sections */
+  .overflow-y-auto {
+    scroll-behavior: smooth;
+  }
   
   .bg-blueprint-grid {
     background-image: 

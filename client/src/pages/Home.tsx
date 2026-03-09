@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { ChevronRight, Download, Mail, ArrowRight, Github, Linkedin, Briefcase, MonitorPlay, PencilRuler, Code2, ShieldAlert } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronRight, Download, Mail, ArrowRight, Github, Linkedin, Briefcase, PencilRuler, Code2, ShieldAlert, ChevronLeft } from "lucide-react";
 import archTheme from "@assets/Architecture-theam_1772726721753.jpg";
 import cyberTheme from "@assets/cyber-security-theam_1772726721642.jpg";
 import softwareTheme from "@assets/Software-Engineer-theam_1772726721692.jpeg";
@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { api } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
 
-// --- DUMMY DATA ---
+// Project data
 const archProjects: ProjectData[] = [
   {
     title: "Modern Minimalist Villa",
@@ -27,7 +27,7 @@ const archProjects: ProjectData[] = [
   },
   {
     title: "Mua Bungalow Project",
-    description: "Contemporary bungalow design featuring clean lines, spacious interior, and premium finishes. A modern residential masterpiece blending functionality with aesthetic appeal.",
+    description: "Contemporary bungalow design featuring clean lines, spacious interior, and premium finishes.",
     technologies: ["Revit", "SketchUp", "3D Visualization", "CAD"],
     theme: "arch",
     images: [bunga1, bunga2],
@@ -43,7 +43,7 @@ const cyberProjects: ProjectData[] = [
   },
   {
     title: "Bug Bounty Hunter",
-    description: "Active participant on HackerOne. Successfully reported and helped patch multiple XSS and IDOR vulnerabilities across major platforms.",
+    description: "Active participant on HackerOne. Successfully reported and helped patch multiple XSS and IDOR vulnerabilities.",
     technologies: ["Python scripts", "Wireshark", "OWASP ZAP"],
     theme: "cyber",
     image: cyberTheme,
@@ -66,32 +66,20 @@ const softProjects: ProjectData[] = [
   }
 ];
 
+type CareerType = "architecture" | "cybersecurity" | "software";
+
+const careers = [
+  { id: "architecture", title: "Architecture", icon: PencilRuler, color: "blue" },
+  { id: "cybersecurity", title: "Security", icon: ShieldAlert, color: "green" },
+  { id: "software", title: "Engineering", icon: Code2, color: "purple" }
+];
+
 export default function Home() {
-  const targetRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [currentCareerIndex, setCurrentCareerIndex] = useState(0);
   const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
   const { toast } = useToast();
-  
-  // Framer Motion horizontal scroll setup
-  const { scrollYProgress } = useScroll({ target: targetRef });
-  const x = useTransform(scrollYProgress, [0, 1], ["0%", "-80%"]);
-
-  // Prevent carousel scroll from affecting main horizontal scroll
-  useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      // Check if the wheel event is coming from a carousel
-      const target = e.target as HTMLElement;
-      const isCarousel = target.closest('.carousel-container') !== null;
-      
-      // If it's from a carousel, let it scroll naturally without interference
-      if (isCarousel) {
-        return;
-      }
-    };
-
-    window.addEventListener('wheel', handleWheel, { passive: true });
-    return () => window.removeEventListener('wheel', handleWheel);
-  }, []);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef(0);
 
   // Contact Form setup
   const contactMutation = useSubmitContact();
@@ -112,311 +100,417 @@ export default function Home() {
     });
   });
 
+  // Handle swipe/touch for career navigation
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX.current - touchEndX;
+    
+    if (Math.abs(diff) > 50) {
+      if (diff > 0 && currentCareerIndex < careers.length - 1) {
+        setCurrentCareerIndex(currentCareerIndex + 1);
+      } else if (diff < 0 && currentCareerIndex > 0) {
+        setCurrentCareerIndex(currentCareerIndex - 1);
+      }
+    }
+  };
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight" && currentCareerIndex < careers.length - 1) {
+        setCurrentCareerIndex(currentCareerIndex + 1);
+      } else if (e.key === "ArrowLeft" && currentCareerIndex > 0) {
+        setCurrentCareerIndex(currentCareerIndex - 1);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentCareerIndex]);
+
+  const renderCareerSection = (index: number) => {
+    const career = careers[index];
+    
+    if (career.id === "architecture") {
+      return (
+        <ArchitectureSection 
+          projects={archProjects}
+          onProjectClick={setSelectedProject}
+          contactForm={{ form, onSubmit, contactMutation }}
+        />
+      );
+    } else if (career.id === "cybersecurity") {
+      return (
+        <CybersecuritySection 
+          projects={cyberProjects}
+          onProjectClick={setSelectedProject}
+          contactForm={{ form, onSubmit, contactMutation }}
+        />
+      );
+    } else {
+      return (
+        <SoftwareSection 
+          projects={softProjects}
+          onProjectClick={setSelectedProject}
+          contactForm={{ form, onSubmit, contactMutation }}
+        />
+      );
+    }
+  };
+
   return (
-    <div ref={containerRef} className="bg-black text-white selection:bg-white/30 w-full overflow-x-hidden">
-      
-      {/* Global Navigation Indicator (Optional, but adds to the cinematic feel) */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 hidden md:flex gap-4 p-4 rounded-full bg-black/50 backdrop-blur-md border border-white/10">
-        {['Intro', 'Architecture', 'Security', 'Engineering', 'Contact'].map((item, i) => (
-          <div key={item} className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-white/30" />
-            <span className="text-xs font-mono text-white/50 uppercase hidden lg:block">{item}</span>
-            {i < 4 && <ChevronRight className="w-4 h-4 text-white/20" />}
-          </div>
+    <div 
+      ref={scrollContainerRef}
+      className="relative bg-black text-white w-screen h-screen overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Career Navigation Indicator */}
+      <div className="fixed top-8 left-1/2 -translate-x-1/2 z-40 flex gap-4 bg-white/5 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
+        {careers.map((c, i) => (
+          <button
+            key={c.id}
+            onClick={() => setCurrentCareerIndex(i)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+              currentCareerIndex === i 
+                ? "bg-white/20 border border-white/40" 
+                : "hover:bg-white/10"
+            }`}
+          >
+            <c.icon className="w-4 h-4" />
+            <span className="text-sm font-mono uppercase hidden sm:inline">{c.title}</span>
+          </button>
         ))}
       </div>
 
-      {/* The Scroll Container */}
-      <div ref={targetRef} className="h-[500vh] relative w-full">
-        <div className="sticky top-0 h-screen overflow-hidden">
-          <motion.div style={{ x }} className="flex w-[500vw] h-full">
-            
-            {/* 1. HERO / INTRO SECTION */}
-            <section className="w-[100vw] h-full flex flex-col items-center justify-center relative bg-gradient-to-br from-black via-zinc-900 to-black p-8">
-              {/* Subtle background particles / stars effect could go here. We'll use simple radial gradients for elegance */}
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/5 via-transparent to-transparent pointer-events-none" />
-              
-              <motion.div 
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1, delay: 0.2 }}
-                className="z-10 text-center max-w-4xl"
-              >
-                <h1 className="text-5xl md:text-7xl lg:text-8xl font-black mb-6 tracking-tighter">
-                  JACKSON <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-200 to-gray-600">MATIVO</span>
-                </h1>
-                
-                <div className="flex flex-wrap justify-center gap-4 text-sm md:text-base font-mono text-white/60 mb-8 uppercase tracking-widest">
-                  <span className="flex items-center gap-2"><PencilRuler className="w-4 h-4 text-blue-400" /> Architectural Designer</span>
-                  <span className="hidden md:inline text-white/20">|</span>
-                  <span className="flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-green-400" /> Cybersecurity Specialist</span>
-                  <span className="hidden md:inline text-white/20">|</span>
-                  <span className="flex items-center gap-2"><Code2 className="w-4 h-4 text-purple-400" /> Software Engineer</span>
-                </div>
+      {/* Left/Right Navigation Arrows */}
+      {currentCareerIndex > 0 && (
+        <button
+          onClick={() => setCurrentCareerIndex(currentCareerIndex - 1)}
+          className="fixed left-8 top-1/2 -translate-y-1/2 z-40 p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all"
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+      )}
+      {currentCareerIndex < careers.length - 1 && (
+        <button
+          onClick={() => setCurrentCareerIndex(currentCareerIndex + 1)}
+          className="fixed right-8 top-1/2 -translate-y-1/2 z-40 p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all"
+        >
+          <ChevronRight className="w-6 h-6" />
+        </button>
+      )}
 
-                <p className="text-xl md:text-2xl text-white/80 font-light mb-12">
-                  Designing Structures. Securing Systems. Engineering the Future.
-                </p>
+      {/* Career Sections with Transition */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentCareerIndex}
+          initial={{ opacity: 0, x: 100 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -100 }}
+          transition={{ duration: 0.5 }}
+          className="w-full h-full overflow-y-auto overflow-x-hidden"
+        >
+          {renderCareerSection(currentCareerIndex)}
+        </motion.div>
+      </AnimatePresence>
 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                  <a href="/attached_assets/JACKSON_MATIVO_RESUME_(2)_1772726721818.pdf" download className="px-8 py-4 rounded-full bg-white text-black font-bold hover:scale-105 transition-transform flex items-center gap-2">
-                    <Download className="w-5 h-5" /> Download Resume
-                  </a>
-                  <div className="flex items-center gap-4 text-white/40 font-mono text-sm animate-pulse">
-                    <span>Scroll or Swipe to Explore</span>
-                    <ArrowRight className="w-5 h-5" />
-                  </div>
-                </div>
-              </motion.div>
-            </section>
-
-            {/* 2. ARCHITECTURE WORLD */}
-            <section className="w-[100vw] h-full relative overflow-hidden flex items-center p-8 md:p-24 bg-blueprint-grid">
-              {/* Background Image with Overlay */}
-              <div className="absolute inset-0 z-0">
-                <img src={archTheme} alt="Architecture Theme" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#0a192f] via-[#0a192f]/80 to-[#0a192f]/40" />
-              </div>
-
-              <div className="relative z-10 w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                <motion.div
-                  initial={{ opacity: 0, x: -50 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.8 }}
-                >
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-400/30 bg-blue-400/10 text-blue-400 font-mono text-sm mb-6">
-                    <PencilRuler className="w-4 h-4" /> 01. Architecture
-                  </div>
-                  <h2 className="text-5xl md:text-7xl font-bold mb-6 text-glow-arch">Spatial<br/>Design</h2>
-                  <p className="text-lg text-blue-100/70 mb-8 leading-relaxed">
-                    Bridging the gap between conceptual vision and structural reality. My architectural practice focuses on creating sustainable, functional spaces that inspire. I blend traditional drafting techniques with modern 3D visualization.
-                  </p>
-                  
-                  <div className="mb-8">
-                    <SkillBar name="AutoCAD & Drafting" percentage={95} theme="arch" delay={0.1} />
-                    <SkillBar name="Revit & BIM" percentage={88} theme="arch" delay={0.2} />
-                    <SkillBar name="SketchUp & 3D Modeling" percentage={92} theme="arch" delay={0.3} />
-                  </div>
-                </motion.div>
-
-                <div className="w-full">
-                  <ProjectCarousel 
-                    projects={archProjects} 
-                    theme="arch" 
-                    onProjectClick={setSelectedProject}
-                  />
-                </div>
-              </div>
-            </section>
-
-            {/* 3. CYBERSECURITY WORLD */}
-            <section className="w-[100vw] h-full relative overflow-hidden flex items-center p-8 md:p-24 bg-cyber-grid">
-              <div className="absolute inset-0 z-0">
-                <img src={cyberTheme} alt="Cybersecurity Theme" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#000000] via-[#000000]/80 to-[#000000]/40" />
-                {/* Vignette effect */}
-                <div className="absolute inset-0 shadow-[inset_0_0_150px_rgba(0,0,0,1)] pointer-events-none" />
-              </div>
-
-              <div className="relative z-10 w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                <motion.div
-                  initial={{ opacity: 0, x: -50 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.8 }}
-                  className="order-2 lg:order-1"
-                >
-                  <InteractiveTerminal />
-                  
-                  <div className="mt-8 w-full">
-                    <ProjectCarousel 
-                      projects={cyberProjects} 
-                      theme="cyber" 
-                      onProjectClick={setSelectedProject}
-                    />
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, x: 50 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.8 }}
-                  className="order-1 lg:order-2"
-                >
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-green-400/30 bg-green-400/10 text-green-400 font-mono text-sm mb-6">
-                    <ShieldAlert className="w-4 h-4" /> 02. Security
-                  </div>
-                  <h2 className="text-5xl md:text-7xl font-bold mb-6 text-glow-cyber">System<br/>Defense</h2>
-                  <p className="text-lg text-green-100/70 mb-8 leading-relaxed">
-                    Protecting digital assets through rigorous testing and offensive security strategies. Experience in VAPT, bug bounties, and securing complex enterprise environments.
-                  </p>
-                  
-                  <div className="space-y-4">
-                    <SkillBar name="Penetration Testing" percentage={90} theme="cyber" delay={0.1} />
-                    <SkillBar name="Vulnerability Assessment" percentage={94} theme="cyber" delay={0.2} />
-                    <SkillBar name="Network Security" percentage={85} theme="cyber" delay={0.3} />
-                  </div>
-                </motion.div>
-              </div>
-            </section>
-
-            {/* 4. SOFTWARE ENGINEERING WORLD */}
-            <section className="w-[100vw] h-full relative overflow-hidden flex items-center p-8 md:p-24">
-              <div className="absolute inset-0 z-0">
-                <img src={softwareTheme} alt="Software Theme" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-br from-[#170f2e]/90 via-[#0f0920]/90 to-black/90" />
-              </div>
-
-              <div className="relative z-10 w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                <motion.div
-                  initial={{ opacity: 0, y: 50 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8 }}
-                >
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-purple-400/30 bg-purple-400/10 text-purple-400 font-mono text-sm mb-6">
-                    <Code2 className="w-4 h-4" /> 03. Engineering
-                  </div>
-                  <h2 className="text-5xl md:text-7xl font-bold mb-6 text-glow-soft">Digital<br/>Creation</h2>
-                  <p className="text-lg text-purple-100/70 mb-8 leading-relaxed">
-                    Building robust, scalable applications from the ground up. I specialize in modern fullstack development, bringing architectural thinking into software design patterns.
-                  </p>
-                  
-                  <div className="flex flex-wrap gap-3 mb-8">
-                    {["React", "TypeScript", "Node.js", "PostgreSQL", "Next.js", "Python", "Docker"].map(tech => (
-                      <span key={tech} className="px-4 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-200 font-mono text-sm">
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
-                </motion.div>
-
-                <div className="relative w-full">
-                  {/* Decorative code lines floating behind */}
-                  <div className="absolute -inset-10 border border-purple-500/10 rounded-[3rem] -z-10 bg-gradient-to-br from-purple-500/5 to-transparent backdrop-blur-3xl hidden md:block transform rotate-3" />
-                  
-                  <ProjectCarousel 
-                    projects={softProjects} 
-                    theme="soft" 
-                    onProjectClick={setSelectedProject}
-                  />
-                </div>
-              </div>
-            </section>
-
-            {/* 5. CONTACT & TIMELINE SECTION */}
-            <section className="w-[100vw] h-full relative bg-zinc-950 flex flex-col items-center justify-center p-8 md:p-24 overflow-y-auto">
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-800/50 via-zinc-950 to-black pointer-events-none" />
-              
-              <div className="relative z-10 w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16">
-                
-                {/* Timeline / Experience */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                >
-                  <h2 className="text-4xl font-bold mb-8 font-display">Journey</h2>
-                  <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-white/20 before:via-white/20 before:to-transparent">
-                    
-                    {/* Timeline Item 1 */}
-                    <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white/20 bg-zinc-900 text-white shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-[0_0_10px_rgba(255,255,255,0.1)] z-10">
-                        <Briefcase className="w-4 h-4" />
-                      </div>
-                      <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm">
-                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="font-bold text-white">Safaricom</h4>
-                          <span className="text-xs font-mono text-white/50">2023</span>
-                        </div>
-                        <p className="text-sm text-white/70">Cybersecurity Intern. Conducted vulnerability assessments and assisted in securing enterprise infrastructure.</p>
-                      </div>
-                    </div>
-
-                    {/* Timeline Item 2 */}
-                    <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white/20 bg-zinc-900 text-white shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
-                        <MonitorPlay className="w-4 h-4" />
-                      </div>
-                      <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm">
-                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="font-bold text-white">Freelance</h4>
-                          <span className="text-xs font-mono text-white/50">2021-Present</span>
-                        </div>
-                        <p className="text-sm text-white/70">Architectural Designer & Developer. Designing physical spaces and building digital solutions for various clients.</p>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  <div className="flex gap-4 mt-12">
-                    <a href="https://github.com/jacksonmativo" target="_blank" rel="noopener noreferrer" className="p-3 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
-                      <Github className="w-6 h-6" />
-                    </a>
-                    <a href="https://linkedin.com/in/jacksonmativo" target="_blank" rel="noopener noreferrer" className="p-3 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
-                      <Linkedin className="w-6 h-6" />
-                    </a>
-                    <a href="mailto:contact@example.com" className="p-3 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
-                      <Mail className="w-6 h-6" />
-                    </a>
-                  </div>
-                </motion.div>
-
-                {/* Contact Form */}
-                <motion.div
-                  initial={{ opacity: 0, x: 50 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
-                  className="glass-panel p-8 rounded-3xl"
-                >
-                  <h2 className="text-3xl font-bold mb-6 font-display">Initialize Connection</h2>
-                  
-                  <form onSubmit={onSubmit} className="space-y-4">
-                    <div>
-                      <input 
-                        {...form.register("name")}
-                        placeholder="Your Designation (Name)"
-                        className="w-full px-4 py-3 rounded-xl bg-black/50 border border-white/10 focus:border-white/40 focus:ring-1 focus:ring-white/40 outline-none transition-all text-white placeholder:text-white/30 font-mono text-sm"
-                      />
-                      {form.formState.errors.name && <p className="text-red-400 text-xs mt-1">{form.formState.errors.name.message}</p>}
-                    </div>
-                    
-                    <div>
-                      <input 
-                        {...form.register("email")}
-                        placeholder="Communication Node (Email)"
-                        className="w-full px-4 py-3 rounded-xl bg-black/50 border border-white/10 focus:border-white/40 focus:ring-1 focus:ring-white/40 outline-none transition-all text-white placeholder:text-white/30 font-mono text-sm"
-                      />
-                      {form.formState.errors.email && <p className="text-red-400 text-xs mt-1">{form.formState.errors.email.message}</p>}
-                    </div>
-
-                    <div>
-                      <textarea 
-                        {...form.register("message")}
-                        placeholder="Transmit Payload (Message)"
-                        rows={4}
-                        className="w-full px-4 py-3 rounded-xl bg-black/50 border border-white/10 focus:border-white/40 focus:ring-1 focus:ring-white/40 outline-none transition-all text-white placeholder:text-white/30 font-mono text-sm resize-none"
-                      />
-                      {form.formState.errors.message && <p className="text-red-400 text-xs mt-1">{form.formState.errors.message.message}</p>}
-                    </div>
-
-                    <button 
-                      type="submit"
-                      disabled={contactMutation.isPending}
-                      className="w-full py-4 rounded-xl bg-white text-black font-bold hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {contactMutation.isPending ? "Transmitting..." : "Execute"}
-                      <ArrowRight className="w-5 h-5" />
-                    </button>
-                  </form>
-                </motion.div>
-
-              </div>
-            </section>
-
-          </motion.div>
-        </div>
-      </div>
-
+      {/* Project Modal */}
       <ProjectModal project={selectedProject} onClose={() => setSelectedProject(null)} />
     </div>
+  );
+}
+
+// ============ ARCHITECTURE SECTION ============
+function ArchitectureSection({ projects, onProjectClick, contactForm }: any) {
+  return (
+    <div className="w-full bg-gradient-to-b from-[#0a192f] to-black">
+      {/* Hero */}
+      <section className="relative w-full h-screen flex items-center justify-center p-8 overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img src={archTheme} alt="Architecture" className="w-full h-full object-cover opacity-30" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black" />
+        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="relative z-10 text-center max-w-4xl"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-400/30 bg-blue-400/10 text-blue-400 font-mono text-sm mb-6 mb-6">
+            <PencilRuler className="w-4 h-4" /> Architectural Designer
+          </div>
+          <h1 className="text-6xl md:text-8xl font-black mb-6 text-glow-arch">
+            Spatial<br/>Design
+          </h1>
+          <p className="text-xl md:text-2xl text-white/80 mb-12">
+            Designing Structures. Creating Spaces. Building Dreams.
+          </p>
+          <button className="px-8 py-4 rounded-full bg-white text-black font-bold hover:bg-gray-200 transition-all flex items-center gap-2 mx-auto">
+            Explore Projects <ArrowRight className="w-5 h-5" />
+          </button>
+        </motion.div>
+      </section>
+
+      {/* About & Skills */}
+      <section className="min-h-screen flex items-center px-8 md:px-16 py-20 max-w-7xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, x: -50 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center w-full"
+        >
+          <div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-8 text-glow-arch">About My Work</h2>
+            <p className="text-lg text-white/70 mb-6 leading-relaxed">
+              With six years of self-taught architectural design experience, I specialize in creating sustainable, functional spaces that blend traditional craftsmanship with modern innovation. From residential villas to commercial complexes, every project reflects my commitment to excellence.
+            </p>
+            <p className="text-lg text-white/70 mb-8 leading-relaxed">
+              I leverage industry-leading tools like AutoCAD, Revit, and SketchUp to transform concepts into stunning visual realities.
+            </p>
+          </div>
+          <div className="space-y-6">
+            <SkillBar name="AutoCAD & Drafting" percentage={95} theme="arch" delay={0.1} />
+            <SkillBar name="Revit & BIM" percentage={88} theme="arch" delay={0.2} />
+            <SkillBar name="SketchUp & 3D Modeling" percentage={92} theme="arch" delay={0.3} />
+            <SkillBar name="Design Philosophy" percentage={90} theme="arch" delay={0.4} />
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Projects */}
+      <section className="min-h-screen flex items-center px-8 md:px-16 py-20 max-w-7xl mx-auto w-full">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-full"
+        >
+          <h2 className="text-4xl md:text-5xl font-bold mb-12 text-glow-arch">Architecture Projects</h2>
+          <ProjectCarousel 
+            projects={projects}
+            theme="arch"
+            onProjectClick={onProjectClick}
+          />
+        </motion.div>
+      </section>
+
+      {/* Contact */}
+      <ContactSection contactForm={contactForm} theme="arch" />
+    </div>
+  );
+}
+
+// ============ CYBERSECURITY SECTION ============
+function CybersecuritySection({ projects, onProjectClick, contactForm }: any) {
+  return (
+    <div className="w-full bg-black">
+      {/* Hero */}
+      <section className="relative w-full h-screen flex items-center justify-center p-8 overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img src={cyberTheme} alt="Cybersecurity" className="w-full h-full object-cover opacity-20" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-black" />
+        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="relative z-10 text-center max-w-4xl"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-green-400/30 bg-green-400/10 text-green-400 font-mono text-sm mb-6">
+            <ShieldAlert className="w-4 h-4" /> Cybersecurity Specialist
+          </div>
+          <h1 className="text-6xl md:text-8xl font-black mb-6 text-glow-cyber">
+            System<br/>Defense
+          </h1>
+          <p className="text-xl md:text-2xl text-white/80 mb-12">
+            Securing Systems. Uncovering Vulnerabilities. Protecting Assets.
+          </p>
+          <button className="px-8 py-4 rounded-full bg-green-500 text-black font-bold hover:bg-green-400 transition-all flex items-center gap-2 mx-auto">
+            View Security Work <ArrowRight className="w-5 h-5" />
+          </button>
+        </motion.div>
+      </section>
+
+      {/* Terminal & Skills */}
+      <section className="min-h-screen flex items-center px-8 md:px-16 py-20 max-w-7xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, x: -50 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center w-full"
+        >
+          <div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-8 text-glow-cyber">Security Expertise</h2>
+            <p className="text-lg text-white/70 mb-6 leading-relaxed">
+              As a cybersecurity specialist with hands-on experience at Safaricom Kenya, I specialize in vulnerability assessments, penetration testing, and API security. I've identified critical zero-days and helped organizations strengthen their defenses.
+            </p>
+            <p className="text-lg text-white/70 mb-8 leading-relaxed">
+              Currently active in bug bounty hunting on HackerOne, continuously discovering and responsibly disclosing vulnerabilities to improve global security.
+            </p>
+          </div>
+          <div className="space-y-6">
+            <SkillBar name="Penetration Testing" percentage={90} theme="cyber" delay={0.1} />
+            <SkillBar name="Vulnerability Assessment" percentage={94} theme="cyber" delay={0.2} />
+            <SkillBar name="API Security Testing" percentage={92} theme="cyber" delay={0.3} />
+            <SkillBar name="Network Security" percentage={85} theme="cyber" delay={0.4} />
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Projects */}
+      <section className="min-h-screen flex items-center px-8 md:px-16 py-20 max-w-7xl mx-auto w-full">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-full"
+        >
+          <h2 className="text-4xl md:text-5xl font-bold mb-12 text-glow-cyber">Security Projects</h2>
+          <ProjectCarousel 
+            projects={projects}
+            theme="cyber"
+            onProjectClick={onProjectClick}
+          />
+        </motion.div>
+      </section>
+
+      {/* Contact */}
+      <ContactSection contactForm={contactForm} theme="cyber" />
+    </div>
+  );
+}
+
+// ============ SOFTWARE ENGINEERING SECTION ============
+function SoftwareSection({ projects, onProjectClick, contactForm }: any) {
+  return (
+    <div className="w-full bg-gradient-to-b from-[#170f2e] to-black">
+      {/* Hero */}
+      <section className="relative w-full h-screen flex items-center justify-center p-8 overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img src={softwareTheme} alt="Software" className="w-full h-full object-cover opacity-20" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-black" />
+        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="relative z-10 text-center max-w-4xl"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-purple-400/30 bg-purple-400/10 text-purple-400 font-mono text-sm mb-6">
+            <Code2 className="w-4 h-4" /> Software Engineer
+          </div>
+          <h1 className="text-6xl md:text-8xl font-black mb-6 text-glow-soft">
+            Digital<br/>Creation
+          </h1>
+          <p className="text-xl md:text-2xl text-white/80 mb-12">
+            Engineering the Future. Building Solutions. Creating Impact.
+          </p>
+          <button className="px-8 py-4 rounded-full bg-purple-500 text-white font-bold hover:bg-purple-600 transition-all flex items-center gap-2 mx-auto">
+            Explore Software <ArrowRight className="w-5 h-5" />
+          </button>
+        </motion.div>
+      </section>
+
+      {/* About & Skills */}
+      <section className="min-h-screen flex items-center px-8 md:px-16 py-20 max-w-7xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, x: -50 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center w-full"
+        >
+          <div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-8 text-glow-soft">Software Development</h2>
+            <p className="text-lg text-white/70 mb-6 leading-relaxed">
+              Building robust, scalable applications with modern fullstack technologies. I specialize in React, TypeScript, Node.js, and cloud infrastructure. From privacy-first applications to network visualization systems, I create solutions that matter.
+            </p>
+            <p className="text-lg text-white/70 mb-8 leading-relaxed">
+              My architectural background brings structured thinking to software design, resulting in elegant, maintainable code and impressive user experiences.
+            </p>
+          </div>
+          <div className="space-y-6">
+            <SkillBar name="React & Frontend" percentage={94} theme="soft" delay={0.1} />
+            <SkillBar name="Node.js & Backend" percentage={90} theme="soft" delay={0.2} />
+            <SkillBar name="TypeScript & Type Safety" percentage={92} theme="soft" delay={0.3} />
+            <SkillBar name="Cloud & DevOps" percentage={85} theme="soft" delay={0.4} />
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Projects */}
+      <section className="min-h-screen flex items-center px-8 md:px-16 py-20 max-w-7xl mx-auto w-full">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-full"
+        >
+          <h2 className="text-4xl md:text-5xl font-bold mb-12 text-glow-soft">Software Projects</h2>
+          <ProjectCarousel 
+            projects={projects}
+            theme="soft"
+            onProjectClick={onProjectClick}
+          />
+        </motion.div>
+      </section>
+
+      {/* Contact */}
+      <ContactSection contactForm={contactForm} theme="soft" />
+    </div>
+  );
+}
+
+// ============ CONTACT SECTION ============
+function ContactSection({ contactForm, theme }: any) {
+  const themeColors = {
+    arch: "bg-blue-400/10 border-blue-400/30 text-blue-400",
+    cyber: "bg-green-400/10 border-green-400/30 text-green-400",
+    soft: "bg-purple-400/10 border-purple-400/30 text-purple-400"
+  };
+
+  return (
+    <section className="min-h-screen flex items-center px-8 md:px-16 py-20 max-w-7xl mx-auto w-full mb-20">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="w-full"
+      >
+        <h2 className={`text-4xl md:text-5xl font-bold mb-12 ${theme === "arch" ? "text-glow-arch" : theme === "cyber" ? "text-glow-cyber" : "text-glow-soft"}`}>
+          Get In Touch
+        </h2>
+        <form onSubmit={contactForm.onSubmit} className="space-y-4 max-w-md">
+          <input 
+            {...contactForm.form.register("name")}
+            placeholder="Your Name"
+            className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 outline-none transition-all text-white placeholder:text-white/40"
+          />
+          <input 
+            {...contactForm.form.register("email")}
+            placeholder="Your Email"
+            className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 outline-none transition-all text-white placeholder:text-white/40"
+          />
+          <textarea 
+            {...contactForm.form.register("message")}
+            placeholder="Your Message"
+            rows={4}
+            className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 outline-none transition-all text-white placeholder:text-white/40 resize-none"
+          />
+          <button 
+            type="submit"
+            disabled={contactForm.contactMutation.isPending}
+            className={`w-full py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${themeColors[theme as keyof typeof themeColors]}`}
+          >
+            {contactForm.contactMutation.isPending ? "Sending..." : "Send Message"}
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </form>
+      </motion.div>
+    </section>
   );
 }
