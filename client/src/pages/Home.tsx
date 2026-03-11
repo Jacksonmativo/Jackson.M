@@ -240,7 +240,7 @@ function ArchitectureSection({ projects, onProjectClick, contactForm }: any) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="relative z-10 text-center max-w-4xl mb-12 drop-shadow-[0_2px_20px_rgba(0,0,0,0.8)]"
+          className="relative z-10 text-center max-w-4xl mb-12"
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-400/30 bg-blue-400/10 text-blue-400 font-mono text-sm mb-6">
             <PencilRuler className="w-4 h-4" /> Architectural Designer
@@ -256,12 +256,12 @@ function ArchitectureSection({ projects, onProjectClick, contactForm }: any) {
           </button>
         </motion.div>
 
-        {/* 3D House Animation Video — full-bleed, edges fade into background */}
+        {/* 3D House Animation Video */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1.2, delay: 0.4 }}
-          className="absolute inset-0 z-0 w-full h-full pointer-events-none"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className="relative z-10 w-full max-w-3xl rounded-2xl overflow-hidden border border-blue-400/30 shadow-[0_0_40px_rgba(96,165,250,0.15)]"
         >
           <video
             src={houseAnimation}
@@ -269,13 +269,8 @@ function ArchitectureSection({ projects, onProjectClick, contactForm }: any) {
             muted
             loop
             playsInline
-            className="w-full h-full object-cover opacity-60"
+            className="w-full h-auto"
           />
-          {/* Gradient fades on all four edges to blend into the section background */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0a192f] via-transparent to-[#0a192f]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0a192f] via-transparent to-[#0a192f]" />
-          {/* Extra bottom fade to blend into the next section */}
-          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0a192f] to-transparent" />
         </motion.div>
       </section>
 
