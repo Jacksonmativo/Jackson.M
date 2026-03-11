@@ -85,7 +85,7 @@ export function GalleryViewer({ images, title, isOpen, onClose, theme }: Gallery
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 backdrop-blur-md p-4"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 backdrop-blur-md p-2 sm:p-4"
           onClick={onClose}
         >
           {/* Modal box */}
@@ -95,7 +95,7 @@ export function GalleryViewer({ images, title, isOpen, onClose, theme }: Gallery
             exit={{ scale: 0.93, opacity: 0 }}
             transition={{ type: "spring", stiffness: 320, damping: 30 }}
             onClick={e => e.stopPropagation()}
-            className={`relative w-full max-w-3xl rounded-2xl overflow-hidden border ${accent.split(" ")[0]} bg-[#0a0a0a] shadow-2xl`}
+            className={`relative w-full max-w-6xl rounded-2xl overflow-hidden border ${accent.split(" ")[0]} bg-[#0a0a0a] shadow-2xl`}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
@@ -114,7 +114,7 @@ export function GalleryViewer({ images, title, isOpen, onClose, theme }: Gallery
             {/* Image area */}
             <div
               className="relative overflow-hidden bg-black"
-              style={{ height: "clamp(240px, 55vw, 520px)" }}
+              style={{ height: "clamp(300px, 72vh, 800px)" }}
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
@@ -129,7 +129,7 @@ export function GalleryViewer({ images, title, isOpen, onClose, theme }: Gallery
                   transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.8 }}
                   src={images[index]}
                   alt={`${title} ${index + 1}`}
-                  className="absolute inset-0 w-full h-full object-contain"
+                  className="absolute inset-0 w-full h-full object-cover"
                   draggable={false}
                 />
               </AnimatePresence>
