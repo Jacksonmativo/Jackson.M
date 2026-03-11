@@ -11,7 +11,6 @@ import { ProjectModal, type ProjectData } from "@/components/ProjectModal";
 import { InteractiveTerminal } from "@/components/InteractiveTerminal";
 import { SkillBar } from "@/components/SkillBar";
 import { ProjectCarousel } from "@/components/ProjectCarousel";
-import { CyberBackground } from "@/components/CyberBackground";
 import { useSubmitContact } from "@/hooks/use-contact";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -328,10 +327,15 @@ function ArchitectureSection({ projects, onProjectClick, contactForm }: any) {
 function CybersecuritySection({ projects, onProjectClick, contactForm }: any) {
   return (
     <div className="w-full bg-black">
-      {/* Hero with Animated Cybersecurity Background */}
+      {/* Hero with Three.js Globe Background */}
       <section className="relative w-full h-screen flex items-center justify-center p-8 overflow-hidden">
-        <CyberBackground />
-        <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/30 to-black/60" />
+        <iframe
+          src="/cyber-globe.html"
+          className="absolute inset-0 w-full h-full border-0"
+          style={{ zIndex: 0, pointerEvents: 'none' }}
+          title="Cyber Globe"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/50" style={{ zIndex: 1 }} />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
