@@ -9,17 +9,18 @@ export function CyberGlobe() {
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Scene setup
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
-    const camera = new THREE.PerspectiveCamera(
-      45,
-      containerRef.current.clientWidth / containerRef.current.clientHeight,
-      0.1,
-      1000
-    );
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    rendererRef.current = renderer;
+    try {
+      // Scene setup
+      const scene = new THREE.Scene();
+      sceneRef.current = scene;
+      const camera = new THREE.PerspectiveCamera(
+        45,
+        containerRef.current.clientWidth / containerRef.current.clientHeight,
+        0.1,
+        1000
+      );
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
+      rendererRef.current = renderer;
 
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
     renderer.setClearColor(0x000000, 0);
@@ -207,14 +208,26 @@ export function CyberGlobe() {
 
     window.addEventListener('resize', handleResize);
 
-    // Cleanup
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (containerRef.current && rendererRef.current) {
-        containerRef.current.removeChild(rendererRef.current.domElement);
-      }
-      renderer.dispose();
-    };
+      // Cleanup
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        if (containerRef.current && rendererRef.current) {
+          try {
+            containerRef.current.removeChild(rendererRef.current.domElement);
+          } catch (e) {
+            // Already removed
+          }
+        }
+        renderer.dispose();
+      };
+    } catch (error) {
+      // WebGL not available or failed to initialize
+      console.warn('WebGL failed to initialize:', error);
+      // Return empty cleanup function
+      return () => {
+        window.removeEventListener('resize', () => {});
+      };
+    }
   }, []);
 
   return (
