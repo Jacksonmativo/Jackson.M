@@ -8,6 +8,15 @@ import bunga1 from "@assets/Screenshot_20260307_180405_WhatsAppBusiness_17728960
 import bunga2 from "@assets/Screenshot_20260307_180414_WhatsAppBusiness_1772896024768.jpg";
 import bunga3 from "@assets/IMG-20260130-WA0025(1)_1773289529998.jpg";
 import bunga4 from "@assets/IMG-20260130-WA0027(1)_1773289530041.jpg";
+import elg1 from "@assets/IMG-20230211-WA0007_1773289895553.jpg";
+import elg2 from "@assets/IMG-20230213-WA0006_1773289895604.jpg";
+import elg3 from "@assets/IMG-20230211-WA0006_1773289895643.jpg";
+import elg4 from "@assets/IMG-20230211-WA0008_1773289895689.jpg";
+import elg5 from "@assets/IMG-20251203-WA0003_1773289895726.jpg";
+import elg6 from "@assets/IMG-20251203-WA0004_1773289895761.jpg";
+import elg7 from "@assets/IMG-20251203-WA0001_1773289895790.jpg";
+import elg8 from "@assets/IMG-20251203-WA0002_1773289895820.jpg";
+import elg9 from "@assets/IMG-20240416-WA0014_1773289895851.jpg";
 import houseAnimation from "@assets/3D_House_Animation_1773137939467.mp4";
 import { ProjectModal, type ProjectData } from "@/components/ProjectModal";
 import { InteractiveTerminal } from "@/components/InteractiveTerminal";
@@ -34,6 +43,13 @@ const archProjects: ProjectData[] = [
     technologies: ["Revit", "SketchUp", "3D Visualization", "CAD"],
     theme: "arch",
     images: [bunga1, bunga2, bunga3, bunga4],
+  },
+  {
+    title: "Elgeiyo Marakwet Project",
+    description: "A striking residential design for Elgeiyo Marakwet County featuring a distinctive curved roofline, large glazed gable, and rich stone masonry. The project blends bold architectural expression with local craftsmanship, documented from 3D concept renders through to full construction completion.",
+    technologies: ["AutoCAD", "SketchUp", "3D Rendering", "Site Supervision"],
+    theme: "arch",
+    images: [elg1, elg2, elg3, elg4, elg5, elg6, elg7, elg8, elg9],
   }
 ];
 
