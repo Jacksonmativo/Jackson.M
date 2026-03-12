@@ -6,6 +6,8 @@ import cyberTheme from "@assets/cyber-security-theam_1772726721642.jpg";
 import softwareTheme from "@assets/Software-Engineer-theam_1772726721692.jpeg";
 import bunga1 from "@assets/Screenshot_20260307_180405_WhatsAppBusiness_1772896024709.jpg";
 import bunga2 from "@assets/Screenshot_20260307_180414_WhatsAppBusiness_1772896024768.jpg";
+import bunga3 from "@assets/IMG-20260130-WA0025(1)_1773289529998.jpg";
+import bunga4 from "@assets/IMG-20260130-WA0027(1)_1773289530041.jpg";
 import houseAnimation from "@assets/3D_House_Animation_1773137939467.mp4";
 import { ProjectModal, type ProjectData } from "@/components/ProjectModal";
 import { InteractiveTerminal } from "@/components/InteractiveTerminal";
@@ -31,7 +33,7 @@ const archProjects: ProjectData[] = [
     description: "Contemporary bungalow design featuring clean lines, spacious interior, and premium finishes.",
     technologies: ["Revit", "SketchUp", "3D Visualization", "CAD"],
     theme: "arch",
-    images: [bunga1, bunga2],
+    images: [bunga1, bunga2, bunga3, bunga4],
   }
 ];
 
