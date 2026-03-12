@@ -18,6 +18,7 @@ import elg7 from "@assets/IMG-20251203-WA0001_1773289895790.jpg";
 import elg8 from "@assets/IMG-20251203-WA0002_1773289895820.jpg";
 import elg9 from "@assets/IMG-20240416-WA0014_1773289895851.jpg";
 import houseAnimation from "@assets/3D_House_Animation_1773137939467.mp4";
+import piiShieldCover from "@assets/Secure_AI_interaction_with_PIIShieldPad_1773296871272.png";
 import { ProjectModal, type ProjectData } from "@/components/ProjectModal";
 import { InteractiveTerminal } from "@/components/InteractiveTerminal";
 import { SkillBar } from "@/components/SkillBar";
@@ -75,6 +76,7 @@ const softProjects: ProjectData[] = [
     description: "A secure, encrypted notepad application that automatically detects and redacts Personally Identifiable Information in real-time.",
     technologies: ["React", "TypeScript", "Node.js", "Regex"],
     theme: "soft",
+    image: piiShieldCover,
   },
   {
     title: "Network Digital Twin",
