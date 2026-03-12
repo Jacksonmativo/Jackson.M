@@ -19,6 +19,7 @@ import elg8 from "@assets/IMG-20251203-WA0002_1773289895820.jpg";
 import elg9 from "@assets/IMG-20240416-WA0014_1773289895851.jpg";
 import houseAnimation from "@assets/3D_House_Animation_1773137939467.mp4";
 import piiShieldCover from "@assets/Secure_AI_interaction_with_PIIShieldPad_1773296871272.png";
+import siteOriginCover from "@assets/image_(6)_1773308318134.jpg";
 import { ProjectModal, type ProjectData } from "@/components/ProjectModal";
 import { InteractiveTerminal } from "@/components/InteractiveTerminal";
 import { SkillBar } from "@/components/SkillBar";
@@ -84,6 +85,15 @@ const softProjects: ProjectData[] = [
     technologies: ["Next.js", "Three.js", "Python", "WebSockets"],
     theme: "soft",
     image: softwareTheme,
+  },
+  {
+    title: "SiteOrigin Checker",
+    description: "A browser extension that evaluates the authenticity of every website listed in a search results page. Analyses Domain Age (older domains indicate higher trust), TLS/SSL certificate validity, issuer, and expiry, then produces a Composite Score — a weighted overall trust percentage — so users can instantly identify trustworthy vs suspicious sites.",
+    technologies: ["JavaScript", "Browser Extension API", "TLS/SSL", "DNS Lookup"],
+    theme: "soft",
+    image: siteOriginCover,
+    githubUrl: "https://github.com/Jacksonmativo/SiteOrigin-Checker",
+    demoUrl: "https://share.google/DQjXZTkOxI2Kfjoau",
   }
 ];
 
