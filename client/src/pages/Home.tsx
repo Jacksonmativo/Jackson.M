@@ -20,6 +20,10 @@ import elg9 from "@assets/IMG-20240416-WA0014_1773289895851.jpg";
 import houseAnimation from "@assets/3D_House_Animation_1773137939467.mp4";
 import piiShieldCover from "@assets/Secure_AI_interaction_with_PIIShieldPad_1773296871272.png";
 import siteOriginCover from "@assets/image_(6)_1773308318134.jpg";
+import micro1 from "@assets/Screenshot_20260312_124128_WhatsAppBusiness_1773309027946.jpg";
+import micro2 from "@assets/Screenshot_20260312_124152_WhatsAppBusiness_1773309027992.jpg";
+import micro3 from "@assets/Screenshot_20260312_124156_WhatsAppBusiness_1773309028053.jpg";
+import micro4 from "@assets/Screenshot_20260312_124215_WhatsAppBusiness_1773309027855.jpg";
 import { ProjectModal, type ProjectData } from "@/components/ProjectModal";
 import { InteractiveTerminal } from "@/components/InteractiveTerminal";
 import { SkillBar } from "@/components/SkillBar";
@@ -45,6 +49,13 @@ const archProjects: ProjectData[] = [
     technologies: ["Revit", "SketchUp", "3D Visualization", "CAD"],
     theme: "arch",
     images: [bunga1, bunga2, bunga3, bunga4],
+  },
+  {
+    title: "Micro Centre",
+    description: "A concept design for a computer and electronics retail store inspired by the iconic form of the NVIDIA RTX 4090 GPU. The building's roofline and aerial footprint mirror the card's distinctive triple-fan shroud, blending tech culture with architectural expression. The facade features dramatic vertical louvres, blue accent lighting, and brand signage for NVIDIA, ASUS, Corsair, Thermaltake, and Ryzen.",
+    technologies: ["SketchUp", "Lumion", "3D Rendering", "Concept Design"],
+    theme: "arch",
+    images: [micro1, micro2, micro3, micro4],
   },
   {
     title: "Elgeiyo Marakwet Project",
