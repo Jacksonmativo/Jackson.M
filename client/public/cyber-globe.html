@@ -2,43 +2,81 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Cyber Globe</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { margin: 0; overflow: hidden; background: black; }
-        canvas { display: block; }
+        body { margin: 0; overflow: hidden; background: black; width: 100vw; height: 100vh; }
+        canvas { display: block; width: 100% !important; height: 100% !important; }
     </style>
 </head>
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        const scene = new THREE.Scene();
+        // ── Helpers ──────────────────────────────────────────────────────────
+        function isMobile() { return window.innerWidth < 768; }
+
+        // Camera distance: pull back on portrait so globe always fits
+        function getCamDistance() {
+            const aspect = window.innerWidth / window.innerHeight;
+            if (aspect >= 1) return 3.2;          // landscape / desktop
+            if (aspect >= 0.6) return 4.2;         // tablet portrait
+            return 5.0;                            // phone portrait
+        }
+
+        // Sprite scale: smaller on mobile so labels don't overlap
+        function getSpriteScale() {
+            return isMobile() ? [0.65, 0.16, 1] : [1.1, 0.275, 1];
+        }
+
+        // Dot size: slightly larger on mobile for visibility
+        function getDotSize() {
+            return isMobile() ? 0.012 : 0.0095;
+        }
+
+        // ── Camera at the current distance ───────────────────────────────────
+        function setCameraPosition(distance) {
+            const phi   = 135 * Math.PI / 180;
+            const theta = 115 * Math.PI / 180;
+            camera.position.set(
+                distance * Math.sin(theta) * Math.cos(phi),
+                distance * Math.cos(theta),
+                distance * Math.sin(theta) * Math.sin(phi)
+            );
+            camera.lookAt(0, 0, 0);
+        }
+
+        // ── Scene setup ──────────────────────────────────────────────────────
+        const scene  = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // crisp on retina, no perf hit
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
         const dotGroup = new THREE.Group();
         scene.add(dotGroup);
 
+        setCameraPosition(getCamDistance());
+
+        // ── Globe dots ───────────────────────────────────────────────────────
         const textureLoader = new THREE.TextureLoader();
         textureLoader.load(
             'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg',
             (earthTexture) => {
-                const canvas = document.createElement('canvas');
-                canvas.width = earthTexture.image.width;
-                canvas.height = earthTexture.image.height;
-                const ctx = canvas.getContext('2d');
+                const offscreen = document.createElement('canvas');
+                offscreen.width  = earthTexture.image.width;
+                offscreen.height = earthTexture.image.height;
+                const ctx = offscreen.getContext('2d');
                 ctx.drawImage(earthTexture.image, 0, 0);
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                const imageData = ctx.getImageData(0, 0, offscreen.width, offscreen.height).data;
 
                 const dotGeometry = new THREE.BufferGeometry();
-                const positions = [];
-                const radius = 1.01;
-                const phiSteps = 1080;
-                const thetaSteps = 540;
-                const maxDots = 800000;
+                const positions   = [];
+                const radius      = 1.01;
+                const phiSteps    = 1080;
+                const thetaSteps  = 540;
+                const maxDots     = 800000;
 
                 let count = 0;
                 for (let t = 0; t < thetaSteps && count < maxDots; t++) {
@@ -49,9 +87,9 @@
                         const y = radius * Math.sin(theta) * Math.sin(phi);
                         const z = radius * Math.cos(theta);
 
-                        const u = (Math.atan2(x, z) / (2 * Math.PI) + 0.5) * canvas.width;
-                        const v = (0.5 - Math.asin(y) / Math.PI) * canvas.height;
-                        const idx = (Math.floor(u) + Math.floor(v) * canvas.width) * 4;
+                        const u   = (Math.atan2(x, z) / (2 * Math.PI) + 0.5) * offscreen.width;
+                        const v   = (0.5 - Math.asin(y) / Math.PI) * offscreen.height;
+                        const idx = (Math.floor(u) + Math.floor(v) * offscreen.width) * 4;
 
                         const r = imageData[idx];
                         const g = imageData[idx + 1];
@@ -68,7 +106,7 @@
 
                 const dotMaterial = new THREE.PointsMaterial({
                     color: 0x00ccff,
-                    size: 0.0095,
+                    size: getDotSize(),
                     transparent: true,
                     opacity: 0.92,
                     alphaTest: 0.45
@@ -76,54 +114,50 @@
 
                 dotGroup.add(new THREE.Points(dotGeometry, dotMaterial));
 
+                // ── Security service labels ───────────────────────────────────
                 const services = [
-                    { text: "VAPT (Vulnerability Assessment & Penetration Testing)", lon: 135, lat: -25 },
-                    { text: "API Security Testing",                                   lon:  20, lat:   0 },
-                    { text: "Web Application Security",                               lon:-100, lat:  40 },
-                    { text: "SIEM (Security Information and Event Management)",       lon: -60, lat: -15 },
-                    { text: "Security Compliance Audits",                             lon:  10, lat:  50 },
-                    { text: "Risk & Compliance Assessment",                           lon: 100, lat:  30 },
-                    { text: "Infrastructure Testing",                                 lon:   0, lat: -80 },
-                    { text: "Application Threat Modeling",                            lon: -40, lat:  70 }
+                    { text: "VAPT",                     lon: 135, lat: -25 },
+                    { text: "API Security",              lon:  20, lat:   0 },
+                    { text: "Web App Security",          lon: -100, lat:  40 },
+                    { text: "SIEM",                      lon: -60, lat: -15 },
+                    { text: "Security Audits",           lon:  10, lat:  50 },
+                    { text: "Risk Assessment",           lon: 100, lat:  30 },
+                    { text: "Infrastructure Testing",    lon:   0, lat: -80 },
+                    { text: "Threat Modeling",           lon: -40, lat:  70 }
                 ];
 
+                const sprScale = getSpriteScale();
+
                 services.forEach((item, i) => {
-                    const c = document.createElement('canvas');
-                    c.width  = 640;
-                    c.height = 96;
-                    const ctx = c.getContext('2d');
+                    const c   = document.createElement('canvas');
+                    c.width   = 512;
+                    c.height  = 80;
+                    const ctx2 = c.getContext('2d');
 
-                    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-                    ctx.fillRect(0, 0, c.width, c.height);
+                    ctx2.fillStyle = 'rgba(0,0,0,0.5)';
+                    ctx2.fillRect(0, 0, c.width, c.height);
 
-                    ctx.font = 'bold 32px Arial';
-                    ctx.fillStyle = '#e0f7ff';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(item.text, c.width/2, c.height/2);
+                    ctx2.font         = 'bold 28px Arial';
+                    ctx2.fillStyle    = '#e0f7ff';
+                    ctx2.textAlign    = 'center';
+                    ctx2.textBaseline = 'middle';
+                    ctx2.fillText(item.text, c.width / 2, c.height / 2);
 
-                    const texture = new THREE.CanvasTexture(c);
-                    const material = new THREE.SpriteMaterial({
-                        map: texture,
-                        transparent: true,
-                        opacity: 0
-                    });
-
-                    const sprite = new THREE.Sprite(material);
+                    const texture  = new THREE.CanvasTexture(c);
+                    const material = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0 });
+                    const sprite   = new THREE.Sprite(material);
 
                     const phi   = (item.lon * Math.PI) / 180;
                     const theta = ((90 + item.lat) * Math.PI) / 180;
-                    const r = 1.28;
-
+                    const r     = 1.28;
                     sprite.position.set(
                         r * Math.sin(theta) * Math.cos(phi),
                         r * Math.cos(theta),
                         r * Math.sin(theta) * Math.sin(phi)
                     );
 
-                    sprite.scale.set(1.1, 0.275, 1);
+                    sprite.scale.set(...sprScale);
                     sprite.userData.phase = i * (Math.PI * 2 / services.length);
-
                     dotGroup.add(sprite);
                 });
             },
@@ -131,11 +165,13 @@
             err => console.error('Texture load failed:', err)
         );
 
+        // ── Lighting ─────────────────────────────────────────────────────────
         scene.add(new THREE.AmbientLight(0x404040));
         const pointLight = new THREE.PointLight(0xffffff, 1.1, 100);
         pointLight.position.set(6, 4, 6);
         scene.add(pointLight);
 
+        // ── Stars ────────────────────────────────────────────────────────────
         const starsGeo = new THREE.BufferGeometry();
         const starsPos = new Float32Array(1200 * 3);
         for (let i = 0; i < starsPos.length; i += 3) {
@@ -144,22 +180,9 @@
             starsPos[i+2] = (Math.random() - 0.5) * 240;
         }
         starsGeo.setAttribute('position', new THREE.BufferAttribute(starsPos, 3));
-        scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({
-            color: 0xeeeeee,
-            size: 0.12,
-            transparent: true
-        })));
+        scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({ color: 0xeeeeee, size: 0.12, transparent: true })));
 
-        const camR = 3.2;
-        const camPhi   = 135 * Math.PI / 180;
-        const camTheta = 115 * Math.PI / 180;
-        camera.position.set(
-            camR * Math.sin(camTheta) * Math.cos(camPhi),
-            camR * Math.cos(camTheta),
-            camR * Math.sin(camTheta) * Math.sin(camPhi)
-        );
-        camera.lookAt(0, 0, 0);
-
+        // ── Animation loop ───────────────────────────────────────────────────
         function animate(t = 0) {
             requestAnimationFrame(animate);
             dotGroup.rotation.y += 0.0048;
@@ -172,10 +195,15 @@
         }
         animate();
 
+        // ── Responsive resize ────────────────────────────────────────────────
         window.addEventListener('resize', () => {
-            camera.aspect = innerWidth / innerHeight;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            camera.aspect = w / h;
             camera.updateProjectionMatrix();
-            renderer.setSize(innerWidth, innerHeight);
+            renderer.setSize(w, h);
+            // Re-position camera so globe always fits the new aspect ratio
+            setCameraPosition(getCamDistance());
         });
     </script>
 </body>
