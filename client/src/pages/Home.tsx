@@ -272,16 +272,32 @@ function ArchitectureSection({ projects, onProjectClick, contactForm }: any) {
   return (
     <div className="w-full bg-gradient-to-b from-[#0a192f] to-black">
       {/* Hero */}
-      <section className="relative w-full min-h-screen flex flex-col items-center justify-center p-8 overflow-hidden py-20">
-        <div className="absolute inset-0 z-0">
-          <img src={archTheme} alt="Architecture" className="w-full h-full object-cover opacity-30" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black" />
-        </div>
+      <section className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden">
+        {/* Full-screen video background — object-contain keeps aspect ratio, no stretch */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1 }}
+          className="absolute inset-0 z-0 bg-[#0a192f]"
+        >
+          <video
+            src={houseAnimation}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-contain"
+          />
+          {/* Subtle dark vignette so text stays legible */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0a192f]/70 via-transparent to-[#0a192f]/80" />
+        </motion.div>
+
+        {/* Hero text — floats on top of the video */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="relative z-10 text-center max-w-4xl mb-12"
+          className="relative z-10 text-center max-w-4xl px-8"
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-400/30 bg-blue-400/10 text-blue-400 font-mono text-sm mb-6">
             <PencilRuler className="w-4 h-4" /> Architectural Designer
@@ -295,23 +311,6 @@ function ArchitectureSection({ projects, onProjectClick, contactForm }: any) {
           <button className="px-8 py-4 rounded-full bg-white text-black font-bold hover:bg-gray-200 transition-all flex items-center gap-2 mx-auto">
             Explore Projects <ArrowRight className="w-5 h-5" />
           </button>
-        </motion.div>
-
-        {/* 3D House Animation Video */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          className="relative z-10 w-full max-w-3xl rounded-2xl overflow-hidden border border-blue-400/30 shadow-[0_0_40px_rgba(96,165,250,0.15)]"
-        >
-          <video
-            src={houseAnimation}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="w-full h-auto"
-          />
         </motion.div>
       </section>
 
