@@ -270,29 +270,22 @@ export default function Home() {
 // ============ ARCHITECTURE SECTION ============
 function ArchitectureSection({ projects, onProjectClick, contactForm }: any) {
   return (
-    <div className="w-full bg-gradient-to-b from-[#0a192f] to-black">
-      {/* Hero */}
-      <section className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden">
-        {/* Full-screen video background — object-contain keeps aspect ratio, no stretch */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1 }}
-          className="absolute inset-0 z-0 bg-[#0a192f]"
-        >
-          <video
-            src={houseAnimation}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="w-full h-full object-contain"
-          />
-          {/* Subtle dark vignette so text stays legible */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0a192f]/70 via-transparent to-[#0a192f]/80" />
-        </motion.div>
+    <div className="w-full">
+      {/* Hero — sticky so it stays pinned while content below scrolls over it */}
+      <section className="sticky top-0 z-0 w-full h-screen flex flex-col items-center justify-center overflow-hidden bg-[#0a192f]">
+        {/* Full-screen video — object-contain, no stretch */}
+        <video
+          src={houseAnimation}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-contain"
+        />
+        {/* Vignette so text stays legible */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a192f]/70 via-transparent to-[#0a192f]/80" />
 
-        {/* Hero text — floats on top of the video */}
+        {/* Hero text */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -314,8 +307,8 @@ function ArchitectureSection({ projects, onProjectClick, contactForm }: any) {
         </motion.div>
       </section>
 
-      {/* About & Skills */}
-      <section className="min-h-screen flex items-center px-8 md:px-16 py-20 max-w-7xl mx-auto">
+      {/* About & Skills — solid background so it slides over and covers the sticky video */}
+      <section className="relative z-10 bg-gradient-to-b from-[#0a192f] to-black min-h-screen flex items-center px-8 md:px-16 py-20 max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, x: -50 }}
           whileInView={{ opacity: 1, x: 0 }}
@@ -341,7 +334,7 @@ function ArchitectureSection({ projects, onProjectClick, contactForm }: any) {
       </section>
 
       {/* Projects */}
-      <section className="min-h-screen flex items-center px-8 md:px-16 py-20 max-w-7xl mx-auto w-full">
+      <section className="relative z-10 bg-black min-h-screen flex items-center px-8 md:px-16 py-20 max-w-7xl mx-auto w-full">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -358,7 +351,9 @@ function ArchitectureSection({ projects, onProjectClick, contactForm }: any) {
       </section>
 
       {/* Contact */}
-      <ContactSection contactForm={contactForm} theme="arch" />
+      <div className="relative z-10 bg-black">
+        <ContactSection contactForm={contactForm} theme="arch" />
+      </div>
     </div>
   );
 }
