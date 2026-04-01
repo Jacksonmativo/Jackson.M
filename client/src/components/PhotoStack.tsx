@@ -80,7 +80,7 @@ export function PhotoStack({ images, alt, onOpenGallery, isGalleryOpen, theme }:
             }}
             transition={{ type: "spring", stiffness: 280, damping: 28 }}
             style={{ zIndex: cfg.zIndex }}
-            className="absolute inset-0 rounded-xl overflow-hidden border-[3px] border-white/25 shadow-2xl bg-black"
+            className="absolute inset-0 rounded-xl overflow-hidden shadow-2xl bg-black"
           >
             <img
               src={image}
