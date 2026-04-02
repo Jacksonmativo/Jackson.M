@@ -38,7 +38,8 @@ export default function SplashScreen() {
           transition={{ duration: 0.7, ease: "easeInOut" }}
           onClick={dismiss}
           onTouchStart={dismiss}
-          className="fixed inset-0 z-[9999] overflow-hidden cursor-pointer select-none bg-black"
+          className="fixed top-0 left-0 right-0 z-[9999] overflow-hidden cursor-pointer select-none bg-black"
+          style={{ height: "33.33vh" }}
         >
           <video
             src={splashVideo}
@@ -53,10 +54,10 @@ export default function SplashScreen() {
             initial={{ opacity: 0 }}
             animate={{ opacity: [0, 0.7, 0.35, 0.7] }}
             transition={{ delay: 1.5, duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute bottom-8 left-0 right-0 text-center text-xs uppercase tracking-[0.22em] text-white/60 font-medium"
+            className="absolute bottom-2 left-0 right-0 text-center text-xs uppercase tracking-[0.22em] text-white/60 font-medium"
             style={{ fontFamily: "'Geist', sans-serif" }}
           >
-            Tap anywhere to skip
+            Tap to skip
           </motion.p>
         </motion.div>
       )}
