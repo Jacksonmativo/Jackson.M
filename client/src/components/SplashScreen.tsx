@@ -60,7 +60,7 @@ export default function SplashScreen() {
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             className="relative z-10 flex-shrink-0 flex items-end"
-            style={{ width: "clamp(140px, 32vw, 320px)" }}
+            style={{ width: "clamp(200px, 52vw, 580px)" }}
           >
             <img
               src={jacksonPhoto}
@@ -106,8 +106,6 @@ export default function SplashScreen() {
             </motion.p>
           </motion.div>
 
-          {/* ── RIGHT spacer (mirrors left for balance) ── */}
-          <div style={{ width: "clamp(40px, 8vw, 80px)" }} />
         </motion.div>
       )}
     </AnimatePresence>
