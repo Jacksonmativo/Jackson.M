@@ -20,7 +20,7 @@ const STACK_CONFIGS = [
 
 const THEME_BADGE: Record<string, string> = {
   arch:  "bg-blue-400/20 text-blue-300 border-blue-400/40",
-  cyber: "bg-green-400/20 text-green-300 border-green-400/40",
+  cyber: "bg-[#C41230]/20 text-[#e84a63] border-[#C41230]/40",
   soft:  "bg-purple-400/20 text-purple-300 border-purple-400/40",
 };
 

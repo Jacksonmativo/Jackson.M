@@ -12,13 +12,13 @@ interface GalleryViewerProps {
 
 const THEME_ACCENT: Record<string, string> = {
   arch:  "border-blue-400/60 text-blue-400",
-  cyber: "border-green-400/60 text-green-400",
+  cyber: "border-[#C41230]/60 text-[#e84a63]",
   soft:  "border-purple-400/60 text-purple-400",
 };
 
 const THEME_DOT_ACTIVE: Record<string, string> = {
   arch:  "bg-blue-400",
-  cyber: "bg-green-400",
+  cyber: "bg-[#C41230]",
   soft:  "bg-purple-400",
 };
 

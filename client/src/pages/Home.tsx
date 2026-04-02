@@ -112,7 +112,7 @@ type CareerType = "architecture" | "cybersecurity" | "software";
 
 const careers = [
   { id: "architecture", title: "Architecture", icon: PencilRuler, color: "blue" },
-  { id: "cybersecurity", title: "Security", icon: ShieldAlert, color: "green" },
+  { id: "cybersecurity", title: "Security", icon: ShieldAlert, color: "red" },
   { id: "software", title: "Engineering", icon: Code2, color: "purple" }
 ];
 
@@ -377,7 +377,7 @@ function CybersecuritySection({ projects, onProjectClick, contactForm }: any) {
           transition={{ duration: 0.8 }}
           className="relative z-10 text-center max-w-4xl"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-green-400/30 bg-green-400/10 text-green-400 font-mono text-sm mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#C41230]/40 bg-[#C41230]/10 text-[#e84a63] font-mono text-sm mb-6">
             <ShieldAlert className="w-4 h-4" /> Cybersecurity Specialist
           </div>
           <h1 className="text-6xl md:text-8xl font-black mb-6 text-glow-cyber">
@@ -386,7 +386,7 @@ function CybersecuritySection({ projects, onProjectClick, contactForm }: any) {
           <p className="text-xl md:text-2xl text-white/80 mb-12">
             Securing Systems. Uncovering Vulnerabilities. Protecting Assets.
           </p>
-          <button className="px-8 py-4 rounded-full bg-green-500 text-black font-bold hover:bg-green-400 transition-all flex items-center gap-2 mx-auto">
+          <button className="px-8 py-4 rounded-full bg-[#C41230] text-white font-bold hover:bg-[#a50e27] transition-all flex items-center gap-2 mx-auto">
             View Security Work <ArrowRight className="w-5 h-5" />
           </button>
         </motion.div>
@@ -525,7 +525,7 @@ function SoftwareSection({ projects, onProjectClick, contactForm }: any) {
 function ContactSection({ contactForm, theme }: any) {
   const themeColors = {
     arch: "bg-blue-400/10 border-blue-400/30 text-blue-400",
-    cyber: "bg-green-400/10 border-green-400/30 text-green-400",
+    cyber: "bg-[#C41230]/10 border-[#C41230]/30 text-[#e84a63]",
     soft: "bg-purple-400/10 border-purple-400/30 text-purple-400"
   };
 

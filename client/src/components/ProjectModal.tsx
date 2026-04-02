@@ -38,7 +38,7 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
   const getThemeColors = (theme: string) => {
     switch(theme) {
       case 'arch': return 'border-[#60a5fa] shadow-[#60a5fa]/20 text-[#60a5fa]';
-      case 'cyber': return 'border-[#22c55e] shadow-[#22c55e]/20 text-[#22c55e]';
+      case 'cyber': return 'border-[#C41230] shadow-[#C41230]/20 text-[#e84a63]';
       case 'soft': return 'border-[#a78bfa] shadow-[#a78bfa]/20 text-[#a78bfa]';
       default: return 'border-white/20 shadow-white/10 text-white';
     }

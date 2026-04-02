@@ -10,13 +10,13 @@ interface SkillBarProps {
 export function SkillBar({ name, percentage, theme, delay = 0 }: SkillBarProps) {
   const colors = {
     arch: "bg-[#60a5fa] shadow-[#60a5fa]",
-    cyber: "bg-[#22c55e] shadow-[#22c55e]",
+    cyber: "bg-[#C41230] shadow-[#C41230]",
     soft: "bg-[#a78bfa] shadow-[#a78bfa]"
   };
 
   const bgColors = {
     arch: "bg-[#60a5fa]/20",
-    cyber: "bg-[#22c55e]/20",
+    cyber: "bg-[#C41230]/20",
     soft: "bg-[#a78bfa]/20"
   };
 
