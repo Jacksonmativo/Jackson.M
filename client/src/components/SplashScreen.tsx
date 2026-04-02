@@ -60,7 +60,7 @@ export default function SplashScreen() {
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             className="relative z-10 flex-shrink-0 flex items-end"
-            style={{ width: "clamp(80px, 22vw, 200px)" }}
+            style={{ width: "clamp(140px, 32vw, 320px)" }}
           >
             <img
               src={jacksonPhoto}
