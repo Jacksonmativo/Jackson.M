@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import jacksonPhoto from "@assets/Adobe_Express_-_file_1775083799269.png";
+import jacksonPhoto from "@assets/Adobe_Express_-_file_1775088749429.png";
 
 export default function SplashScreen() {
   const [visible, setVisible] = useState(true);
@@ -60,7 +60,7 @@ export default function SplashScreen() {
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             className="relative z-10 flex-shrink-0 flex items-end"
-            style={{ width: "clamp(200px, 52vw, 580px)" }}
+            style={{ width: "clamp(240px, 62vw, 680px)" }}
           >
             <img
               src={jacksonPhoto}
