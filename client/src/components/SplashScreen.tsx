@@ -39,7 +39,7 @@ export default function SplashScreen() {
           onClick={dismiss}
           onTouchStart={dismiss}
           className="fixed top-0 left-0 right-0 z-[9999] overflow-hidden cursor-pointer select-none bg-black"
-          style={{ height: "33.33vh" }}
+          style={{ height: "28vh" }}
         >
           <video
             src={splashVideo}
