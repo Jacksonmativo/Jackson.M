@@ -9,12 +9,12 @@ export default function SplashScreen() {
   function dismiss() {
     if (leaving) return;
     setLeaving(true);
-    setTimeout(() => setVisible(false), 700);
+    setTimeout(() => setVisible(false), 600);
   }
 
   useEffect(() => {
     const onScroll = () => dismiss();
-    const onKey   = (e: KeyboardEvent) => { if (e.key !== "Tab") dismiss(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key !== "Tab") dismiss(); };
     window.addEventListener("scroll",  onScroll, { passive: true });
     window.addEventListener("wheel",   onScroll, { passive: true });
     window.addEventListener("keydown", onKey);
@@ -30,56 +30,58 @@ export default function SplashScreen() {
       {visible && (
         <motion.div
           key="splash"
-          initial={{ opacity: 1 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, scale: 1.04 }}
-          transition={{ duration: 0.65, ease: "easeInOut" }}
+          initial={{ y: 0, opacity: 1 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: "-100%", opacity: 0 }}
+          transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
           onClick={dismiss}
           onTouchStart={dismiss}
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-end overflow-hidden cursor-pointer select-none"
+          className="fixed top-0 left-0 right-0 z-[9999] flex flex-row items-stretch overflow-hidden cursor-pointer select-none"
           style={{
-            background: "linear-gradient(160deg, rgba(186,230,255,0.55) 0%, rgba(147,210,255,0.45) 40%, rgba(200,240,255,0.6) 100%)",
-            backdropFilter: "blur(28px)",
-            WebkitBackdropFilter: "blur(28px)",
+            height: "33.33vh",
+            background: "linear-gradient(135deg, rgba(186,230,255,0.72) 0%, rgba(160,215,255,0.60) 50%, rgba(210,240,255,0.75) 100%)",
+            backdropFilter: "blur(32px)",
+            WebkitBackdropFilter: "blur(32px)",
+            borderBottom: "1px solid rgba(255,255,255,0.45)",
+            boxShadow: "0 8px 40px rgba(0, 100, 200, 0.18)",
           }}
         >
-          {/* Subtle noise / depth layer */}
+          {/* Depth glow */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              background: "radial-gradient(ellipse 80% 60% at 50% 110%, rgba(0,120,220,0.18) 0%, transparent 70%)",
+              background: "radial-gradient(ellipse 60% 100% at 20% 100%, rgba(0,140,255,0.15) 0%, transparent 70%)",
             }}
           />
 
-          {/* Photo — grows from bottom, slight right offset for visual balance */}
+          {/* ── LEFT: Photo ── */}
           <motion.div
-            initial={{ y: 60, opacity: 0 }}
-            animate={{ y: 0,  opacity: 1 }}
-            transition={{ delay: 0.15, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-            className="relative z-10 flex-shrink-0"
-            style={{ width: "min(360px, 75vw)", marginBottom: "-2px" }}
+            initial={{ x: -30, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="relative z-10 flex-shrink-0 flex items-end"
+            style={{ width: "clamp(80px, 22vw, 200px)" }}
           >
             <img
               src={jacksonPhoto}
               alt="Jackson Mativo"
-              className="w-full h-auto object-contain drop-shadow-2xl"
-              style={{ filter: "drop-shadow(0 20px 40px rgba(0,80,180,0.25))" }}
+              className="w-full h-full object-contain object-bottom"
+              style={{
+                filter: "drop-shadow(4px 0 18px rgba(0,80,180,0.22))",
+              }}
             />
           </motion.div>
 
-          {/* Text card — sits just above the bottom edge */}
+          {/* ── CENTER: Text ── */}
           <motion.div
-            initial={{ y: 40, opacity: 0 }}
-            animate={{ y: 0,  opacity: 1 }}
-            transition={{ delay: 0.35, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute z-20 bottom-0 left-0 right-0 px-6 pb-10 pt-8 text-center"
-            style={{
-              background: "linear-gradient(to top, rgba(200,235,255,0.75) 0%, transparent 100%)",
-            }}
+            initial={{ y: 16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.25, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-4"
           >
             {/* Name */}
             <h1
-              className="text-5xl sm:text-6xl text-[#0a2a4a] mb-3 leading-tight"
+              className="text-[clamp(2.2rem,6vw,4rem)] text-[#092a48] leading-tight mb-2"
               style={{ fontFamily: "'Allura', cursive", fontWeight: 400 }}
             >
               Jackson Mativo
@@ -87,22 +89,25 @@ export default function SplashScreen() {
 
             {/* Quote */}
             <p
-              className="text-sm sm:text-base text-[#1a4a6e]/80 italic max-w-sm mx-auto leading-relaxed mb-6"
+              className="text-[clamp(0.7rem,1.6vw,0.95rem)] text-[#1a4a6e]/75 italic max-w-xs leading-snug mb-3"
               style={{ fontFamily: "'Lora', serif" }}
             >
               "Architecture is the art of how to waste space beautifully — and fill it with meaning."
             </p>
 
-            {/* Tap hint */}
+            {/* Pulsing hint */}
             <motion.p
-              animate={{ opacity: [0.4, 0.9, 0.4] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-              className="text-xs tracking-widest uppercase text-[#1a4a6e]/60 font-medium"
-              style={{ fontFamily: "'Geist', sans-serif", letterSpacing: "0.18em" }}
+              animate={{ opacity: [0.35, 0.85, 0.35] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="text-[0.65rem] uppercase tracking-[0.2em] text-[#1a4a6e]/55 font-medium"
+              style={{ fontFamily: "'Geist', sans-serif" }}
             >
               Tap anywhere to enter
             </motion.p>
           </motion.div>
+
+          {/* ── RIGHT spacer (mirrors left for balance) ── */}
+          <div style={{ width: "clamp(40px, 8vw, 80px)" }} />
         </motion.div>
       )}
     </AnimatePresence>
