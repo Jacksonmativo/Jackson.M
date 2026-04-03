@@ -28,6 +28,7 @@ import { ProjectModal, type ProjectData } from "@/components/ProjectModal";
 import { InteractiveTerminal } from "@/components/InteractiveTerminal";
 import { SkillBar } from "@/components/SkillBar";
 import { ProjectCarousel } from "@/components/ProjectCarousel";
+import { CircuitCanvas } from "@/components/CircuitCanvas";
 import { useSubmitContact } from "@/hooks/use-contact";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -447,9 +448,13 @@ function SoftwareSection({ projects, onProjectClick, contactForm }: any) {
     <div className="w-full bg-gradient-to-b from-[#170f2e] to-black">
       {/* Hero */}
       <section className="relative w-full h-screen flex items-center justify-center p-8 overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <img src={softwareTheme} alt="Software" className="w-full h-full object-cover opacity-20" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-black" />
+        <div className="absolute inset-0 z-0 bg-[#170f2e]">
+          <img src={softwareTheme} alt="Software" className="w-full h-full object-cover opacity-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-black" />
+        </div>
+        {/* Animated circuit board traces */}
+        <div className="absolute inset-0 z-[1]">
+          <CircuitCanvas />
         </div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
