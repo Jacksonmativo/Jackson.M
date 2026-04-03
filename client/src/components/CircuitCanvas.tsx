@@ -1,34 +1,27 @@
 import { useEffect, useRef } from "react";
 
-// 8-directional system including diagonals
-type Dir = "up" | "down" | "left" | "right" | "ur" | "ul" | "dr" | "dl";
+// Orthogonal only — no diagonals (PCB trace aesthetic)
+type Dir = "up" | "down" | "left" | "right";
 
-const DIAG = Math.SQRT1_2; // 1/√2 ≈ 0.707
-
-// Unit vectors for each direction
 const DIR_VEC: Record<Dir, [number, number]> = {
-  right: [1, 0], left:  [-1, 0],
-  down:  [0, 1], up:    [0, -1],
-  ur:    [DIAG, -DIAG], ul: [-DIAG, -DIAG],
-  dr:    [DIAG,  DIAG], dl: [-DIAG,  DIAG],
+  right: [1,  0],
+  left:  [-1, 0],
+  down:  [0,  1],
+  up:    [0, -1],
 };
 
-// What child directions each parent can spawn
+// Each direction can continue forward, or turn 90° left/right
 const CHILD_DIRS: Record<Dir, Dir[]> = {
-  ur:    ["right", "up", "ur", "dr", "ul"],
-  dr:    ["right", "down", "dr", "ur", "dl"],
-  ul:    ["left",  "up",   "ul", "dl", "ur"],
-  dl:    ["left",  "down", "dl", "ul", "dr"],
-  right: ["up", "down", "ur", "dr", "right"],
-  left:  ["up", "down", "ul", "dl", "left"],
-  up:    ["left", "right", "ul", "ur", "up"],
-  down:  ["left", "right", "dl", "dr", "down"],
+  right: ["right", "up",   "down"],
+  left:  ["left",  "up",   "down"],
+  up:    ["up",    "left", "right"],
+  down:  ["down",  "left", "right"],
 };
 
 const LINE_COLOR = "#a78bfa";
 const DOT_COLOR  = "#c4b5fd";
 const GLOW_COLOR = "#7c3aed";
-const MAX_DEPTH  = 5;
+const MAX_DEPTH  = 8;
 
 interface Branch {
   x: number; y: number;
@@ -43,8 +36,14 @@ interface Branch {
   depth: number;
 }
 
-function makeBranch(x: number, y: number, dir: Dir, maxLen: number, depth: number): Branch {
-  const len = 35 + Math.random() * maxLen;
+function makeBranch(
+  x: number,
+  y: number,
+  dir: Dir,
+  depth: number
+): Branch {
+  // Shorter segments at higher depth → denser branching near tips
+  const len = Math.max(18, 75 - depth * 8) + Math.random() * 35;
   const [dx, dy] = DIR_VEC[dir];
   return {
     x, y,
@@ -52,8 +51,12 @@ function makeBranch(x: number, y: number, dir: Dir, maxLen: number, depth: numbe
     ty: y + dy * len,
     cx: x, cy: y,
     dir,
-    speed: 1.6 + Math.random() * 2.4,
-    done: false, alpha: 1, fading: false, spawned: false, depth,
+    speed: 1.6 + Math.random() * 2.2,
+    done: false,
+    alpha: 1,
+    fading: false,
+    spawned: false,
+    depth,
   };
 }
 
@@ -75,84 +78,98 @@ export function CircuitCanvas() {
     resize();
     window.addEventListener("resize", resize);
 
-    // ── Pulse dots ──────────────────────────────────────────────────────────
-    interface Pulse { branch: Branch; t: number; speed: number; }
-    const pulses: Pulse[] = [];
-    function spawnPulse(b: Branch) {
-      if (!b.done) return;
-      pulses.push({ branch: b, t: 0, speed: 0.005 + Math.random() * 0.006 });
-    }
-
-    // ── Seed branches from corners & edges ──────────────────────────────────
+    // ── Seed positions match image clusters ─────────────────────────────────
+    // Cluster 1: Top-center spreading downward & sideways
+    // Cluster 2: Right side spreading leftward & up/down
     function seed() {
-      const w = canvas.width, h = canvas.height;
+      const w = canvas.width;
+      const h = canvas.height;
 
-      // Diagonal "spine" seeds — like the image's dominant diagonal streaks
-      const diagSeeds: Array<{ x: number; y: number; dir: Dir }> = [
-        { x: w * 0.05, y: h * 0.05, dir: "dr" },
-        { x: w * 0.1,  y: h * 0.0,  dir: "dr" },
-        { x: w * 0.55, y: h * 0.0,  dir: "dr" },
-        { x: w * 0.62, y: h * 0.05, dir: "dl" },
-        { x: w * 1.0,  y: h * 0.3,  dir: "dl" },
-        { x: w * 1.0,  y: h * 0.55, dir: "ul" },
-        { x: w * 0.0,  y: h * 0.1,  dir: "dr" },
-        { x: w * 0.85, y: h * 0.15, dir: "dl" },
+      const topSeeds: Array<{ x: number; y: number; dir: Dir }> = [
+        { x: w * 0.22, y: 0,          dir: "down"  },
+        { x: w * 0.26, y: 0,          dir: "down"  },
+        { x: w * 0.30, y: 0,          dir: "down"  },
+        { x: w * 0.34, y: 0,          dir: "down"  },
+        { x: w * 0.38, y: 0,          dir: "down"  },
+        { x: w * 0.42, y: 0,          dir: "down"  },
+        { x: w * 0.20, y: h * 0.02,   dir: "right" },
+        { x: w * 0.44, y: h * 0.02,   dir: "right" },
+        { x: w * 0.18, y: h * 0.04,   dir: "down"  },
+        { x: w * 0.46, y: h * 0.04,   dir: "down"  },
       ];
 
-      // Orthogonal fringe seeds scattered around
-      const orthSeeds: Array<{ x: number; y: number; dir: Dir }> = [
-        { x: w * 0.02 + Math.random() * w * 0.1, y: h * 0.05 + Math.random() * h * 0.1, dir: "right" },
-        { x: w * 0.7  + Math.random() * w * 0.25, y: Math.random() * h * 0.4, dir: "left"  },
-        { x: w * 0.6  + Math.random() * w * 0.35, y: h * 0.5 + Math.random() * h * 0.4, dir: "up"   },
-        { x: Math.random() * w * 0.3, y: h * 0.6 + Math.random() * h * 0.35, dir: "right" },
+      const rightSeeds: Array<{ x: number; y: number; dir: Dir }> = [
+        { x: w,        y: h * 0.30,   dir: "left"  },
+        { x: w,        y: h * 0.36,   dir: "left"  },
+        { x: w,        y: h * 0.42,   dir: "left"  },
+        { x: w,        y: h * 0.48,   dir: "left"  },
+        { x: w,        y: h * 0.54,   dir: "left"  },
+        { x: w,        y: h * 0.60,   dir: "left"  },
+        { x: w,        y: h * 0.66,   dir: "left"  },
+        { x: w * 0.92, y: h,          dir: "up"    },
+        { x: w * 0.86, y: h,          dir: "up"    },
+        { x: w * 0.98, y: h * 0.25,   dir: "left"  },
       ];
 
-      [...diagSeeds, ...orthSeeds].forEach(({ x, y, dir }) => {
-        branches.push(makeBranch(x, y, dir, 110, 0));
+      [...topSeeds, ...rightSeeds].forEach(({ x, y, dir }) => {
+        branches.push(makeBranch(x, y, dir, 0));
       });
     }
     seed();
 
-    // ── Spawn children on branch completion ─────────────────────────────────
+    // ── Pulse dots ──────────────────────────────────────────────────────────
+    interface Pulse { branch: Branch; t: number; speed: number; }
+    const pulses: Pulse[] = [];
+
+    // ── Spawn children on completion ─────────────────────────────────────────
     function spawnChildren(b: Branch) {
       if (b.spawned || b.depth >= MAX_DEPTH) return;
       b.spawned = true;
 
       const candidates = CHILD_DIRS[b.dir];
-      // Number of children: 1–3, fewer as depth increases
-      const maxKids = Math.max(1, 3 - Math.floor(b.depth * 0.7));
+      const maxKids = Math.max(1, 3 - Math.floor(b.depth * 0.65));
       const numKids = 1 + Math.floor(Math.random() * maxKids);
 
       const used = new Set<Dir>();
       for (let i = 0; i < numKids; i++) {
-        if (Math.random() < 0.12) continue; // dead end
+        if (Math.random() < 0.12) continue; // occasional dead end
         let dir: Dir;
         let tries = 0;
         do {
           dir = candidates[Math.floor(Math.random() * candidates.length)];
           tries++;
-        } while (used.has(dir) && tries < 8);
+        } while (used.has(dir) && tries < 6);
         used.add(dir);
-
-        const maxLen = Math.max(20, 90 - b.depth * 14);
-        branches.push(makeBranch(b.tx, b.ty, dir, maxLen, b.depth + 1));
+        branches.push(makeBranch(b.tx, b.ty, dir, b.depth + 1));
       }
 
-      if (Math.random() < 0.35) setTimeout(() => spawnPulse(b), 500 + Math.random() * 900);
+      // Occasionally launch a travelling pulse dot
+      if (Math.random() < 0.28) {
+        setTimeout(() => {
+          if (b.done && !b.fading) {
+            pulses.push({
+              branch: b,
+              t: 0,
+              speed: 0.004 + Math.random() * 0.007,
+            });
+          }
+        }, 300 + Math.random() * 900);
+      }
     }
 
-    // ── Re-seed when sparse ─────────────────────────────────────────────────
+    // ── Fade old deep branches; re-seed when sparse ──────────────────────────
     const reseeder = setInterval(() => {
       const live = branches.filter(b => !b.fading).length;
-      if (live < 24) seed();
+      if (live < 35) seed();
+
       branches
         .filter(b => b.done && !b.fading && b.depth >= MAX_DEPTH - 1)
         .sort(() => Math.random() - 0.5)
-        .slice(0, 4)
+        .slice(0, 6)
         .forEach(b => { b.fading = true; });
     }, 2000);
 
-    // ── Main draw loop ──────────────────────────────────────────────────────
+    // ── Draw loop ────────────────────────────────────────────────────────────
     function draw() {
       animId = requestAnimationFrame(draw);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -160,14 +177,15 @@ export function CircuitCanvas() {
       for (let i = branches.length - 1; i >= 0; i--) {
         const b = branches[i];
 
-        // Grow toward target
+        // Advance growth
         if (!b.done) {
-          const dx = b.tx - b.cx, dy = b.ty - b.cy;
+          const dx = b.tx - b.cx;
+          const dy = b.ty - b.cy;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist <= b.speed) {
             b.cx = b.tx; b.cy = b.ty;
             b.done = true;
-            setTimeout(() => spawnChildren(b), 60 + Math.random() * 180);
+            setTimeout(() => spawnChildren(b), 40 + Math.random() * 140);
           } else {
             b.cx += (dx / dist) * b.speed;
             b.cy += (dy / dist) * b.speed;
@@ -176,51 +194,66 @@ export function CircuitCanvas() {
 
         // Fade out
         if (b.fading) {
-          b.alpha -= 0.004;
+          b.alpha -= 0.003;
           if (b.alpha <= 0) { branches.splice(i, 1); continue; }
         }
 
-        ctx.globalAlpha = b.alpha * 0.78;
-        ctx.shadowColor = GLOW_COLOR;
-        ctx.shadowBlur  = 6;
-        ctx.strokeStyle = LINE_COLOR;
-        ctx.lineWidth   = 1.15;
-        ctx.lineCap     = "round";
+        const a = b.alpha * 0.9;
 
-        // Trace line
+        // Glow pass (wider, dimmer)
+        ctx.globalAlpha = a * 0.35;
+        ctx.shadowColor  = GLOW_COLOR;
+        ctx.shadowBlur   = 0;
+        ctx.strokeStyle  = LINE_COLOR;
+        ctx.lineWidth    = 3.5;
+        ctx.lineCap      = "square";
         ctx.beginPath();
         ctx.moveTo(b.x, b.y);
         ctx.lineTo(b.cx, b.cy);
         ctx.stroke();
 
-        // Start dot
-        ctx.fillStyle  = DOT_COLOR;
-        ctx.shadowBlur = 9;
+        // Core trace
+        ctx.globalAlpha  = a;
+        ctx.shadowColor  = GLOW_COLOR;
+        ctx.shadowBlur   = 10;
+        ctx.strokeStyle  = LINE_COLOR;
+        ctx.lineWidth    = 1.3;
+        ctx.lineCap      = "square";
         ctx.beginPath();
-        ctx.arc(b.x, b.y, 2.2, 0, Math.PI * 2);
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.cx, b.cy);
+        ctx.stroke();
+
+        // Junction dot at start
+        ctx.fillStyle   = DOT_COLOR;
+        ctx.shadowBlur  = 12;
+        ctx.globalAlpha = a;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 2.8, 0, Math.PI * 2);
         ctx.fill();
 
-        // End dot when done
+        // Endpoint dot when done
         if (b.done) {
+          const r = b.depth >= MAX_DEPTH - 1 ? 1.8 : 3.2;
           ctx.beginPath();
-          ctx.arc(b.tx, b.ty, b.depth === MAX_DEPTH ? 1.4 : 2.7, 0, Math.PI * 2);
+          ctx.arc(b.tx, b.ty, r, 0, Math.PI * 2);
           ctx.fill();
         }
       }
 
-      // Pulse dots
+      // Travelling pulse dots
       for (let i = pulses.length - 1; i >= 0; i--) {
         const p = pulses[i];
         p.t += p.speed;
         if (p.t > 1 || p.branch.fading) { pulses.splice(i, 1); continue; }
         const px = p.branch.x  + (p.branch.tx - p.branch.x)  * p.t;
         const py = p.branch.y  + (p.branch.ty - p.branch.y)  * p.t;
-        ctx.globalAlpha = 0.92;
-        ctx.fillStyle   = "#ffffff";
-        ctx.shadowColor = LINE_COLOR;
-        ctx.shadowBlur  = 14;
+        ctx.globalAlpha  = 0.95;
+        ctx.fillStyle    = "#ffffff";
+        ctx.shadowColor  = LINE_COLOR;
+        ctx.shadowBlur   = 18;
         ctx.beginPath();
-        ctx.arc(px, py, 2.4, 0, Math.PI * 2);
+        ctx.arc(px, py, 2.6, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -241,7 +274,7 @@ export function CircuitCanvas() {
     <canvas
       ref={canvasRef}
       className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ opacity: 0.6 }}
+      style={{ opacity: 0.9 }}
     />
   );
 }
