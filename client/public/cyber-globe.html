@@ -22,7 +22,7 @@
             return 5.0;
         }
         function setCameraPosition(d) {
-            const phi = 135 * Math.PI / 180, theta = 115 * Math.PI / 180;
+            const phi = 0 * Math.PI / 180, theta = 90 * Math.PI / 180;
             camera.position.set(
                 d * Math.sin(theta) * Math.cos(phi),
                 d * Math.cos(theta),
@@ -91,7 +91,7 @@
         const storedArcs   = [];
         const activePackets = [];
         const activeSparks  = [];
-        const MAX_PACKETS   = 8;
+        const MAX_PACKETS   = 12;
 
         // ── Binary sprite factory ─────────────────────────────────────────────
         function makeBinarySprite() {
@@ -106,8 +106,6 @@
                 ctx.fillStyle = color;
                 ctx.textAlign    = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.shadowColor  = color;
-                ctx.shadowBlur   = 8;
                 ctx.fillText(randomBits(), cw / 2, ch / 2);
             }
 
