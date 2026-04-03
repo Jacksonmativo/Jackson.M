@@ -1,36 +1,34 @@
 import { useEffect, useRef } from "react";
 
-// 8-directional system
+// 8-directional system including diagonals
 type Dir = "up" | "down" | "left" | "right" | "ur" | "ul" | "dr" | "dl";
 
-const DIAG = Math.SQRT1_2;
+const DIAG = Math.SQRT1_2; // 1/√2 ≈ 0.707
 
+// Unit vectors for each direction
 const DIR_VEC: Record<Dir, [number, number]> = {
-  right: [1, 0],
-  left: [-1, 0],
-  down: [0, 1],
-  up: [0, -1],
-  ur: [DIAG, -DIAG],
-  ul: [-DIAG, -DIAG],
-  dr: [DIAG, DIAG],
-  dl: [-DIAG, DIAG],
+  right: [1, 0], left:  [-1, 0],
+  down:  [0, 1], up:    [0, -1],
+  ur:    [DIAG, -DIAG], ul: [-DIAG, -DIAG],
+  dr:    [DIAG,  DIAG], dl: [-DIAG,  DIAG],
 };
 
+// What child directions each parent can spawn
 const CHILD_DIRS: Record<Dir, Dir[]> = {
-  ur: ["right", "up", "ur", "dr", "ul"],
-  dr: ["right", "down", "dr", "ur", "dl"],
-  ul: ["left", "up", "ul", "dl", "ur"],
-  dl: ["left", "down", "dl", "ul", "dr"],
+  ur:    ["right", "up", "ur", "dr", "ul"],
+  dr:    ["right", "down", "dr", "ur", "dl"],
+  ul:    ["left",  "up",   "ul", "dl", "ur"],
+  dl:    ["left",  "down", "dl", "ul", "dr"],
   right: ["up", "down", "ur", "dr", "right"],
-  left: ["up", "down", "ul", "dl", "left"],
-  up: ["left", "right", "ul", "ur", "up"],
-  down: ["left", "right", "dl", "dr", "down"],
+  left:  ["up", "down", "ul", "dl", "left"],
+  up:    ["left", "right", "ul", "ur", "up"],
+  down:  ["left", "right", "dl", "dr", "down"],
 };
 
-const LINE_COLOR = "#67e8f9";   // brighter cyan-blue
-const DOT_COLOR = "#c4f1f9";
-const GLOW_COLOR = "#22d3ee";   // stronger glow
-const MAX_DEPTH = 6;
+const LINE_COLOR = "#a78bfa";
+const DOT_COLOR  = "#c4b5fd";
+const GLOW_COLOR = "#7c3aed";
+const MAX_DEPTH  = 5;
 
 interface Branch {
   x: number; y: number;
@@ -46,7 +44,7 @@ interface Branch {
 }
 
 function makeBranch(x: number, y: number, dir: Dir, maxLen: number, depth: number): Branch {
-  const len = 45 + Math.random() * maxLen; // longer branches
+  const len = 35 + Math.random() * maxLen;
   const [dx, dy] = DIR_VEC[dir];
   return {
     x, y,
@@ -54,12 +52,8 @@ function makeBranch(x: number, y: number, dir: Dir, maxLen: number, depth: numbe
     ty: y + dy * len,
     cx: x, cy: y,
     dir,
-    speed: 2.2 + Math.random() * 2.8, // faster growth
-    done: false,
-    alpha: 1,
-    fading: false,
-    spawned: false,
-    depth,
+    speed: 1.6 + Math.random() * 2.4,
+    done: false, alpha: 1, fading: false, spawned: false, depth,
   };
 }
 
@@ -69,180 +63,169 @@ export function CircuitCanvas() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d", { alpha: true })!;
+    const ctx = canvas.getContext("2d")!;
 
     let animId: number;
     const branches: Branch[] = [];
-    const pulses: { branch: Branch; t: number; speed: number }[] = [];
 
     function resize() {
-      canvas.width = canvas.offsetWidth;
+      canvas.width  = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
     }
     resize();
     window.addEventListener("resize", resize);
 
-    // Stronger diagonal spine seeds (matches the image's main flow)
-    function seed() {
-      const w = canvas.width;
-      const h = canvas.height;
-
-      const diagSeeds = [
-        { x: w * 0.08, y: h * 0.12, dir: "dr" as Dir },
-        { x: w * 0.18, y: h * 0.05, dir: "dr" as Dir },
-        { x: w * 0.45, y: h * 0.02, dir: "dr" as Dir },
-        { x: w * 0.68, y: h * 0.08, dir: "dl" as Dir },
-        { x: w * 0.92, y: h * 0.25, dir: "dl" as Dir },
-        { x: w * 0.95, y: h * 0.48, dir: "ul" as Dir },
-        { x: w * 0.82, y: h * 0.65, dir: "ul" as Dir },
-        { x: w * 0.12, y: h * 0.22, dir: "dr" as Dir },
-      ];
-
-      const extraSeeds = [
-        { x: w * 0.05 + Math.random() * w * 0.15, y: h * 0.1, dir: "right" as Dir },
-        { x: w * 0.75, y: h * 0.35 + Math.random() * h * 0.3, dir: "left" as Dir },
-        { x: w * 0.6, y: h * 0.55, dir: "up" as Dir },
-      ];
-
-      [...diagSeeds, ...extraSeeds].forEach(({ x, y, dir }) => {
-        branches.push(makeBranch(x, y, dir, 140, 0)); // longer main branches
-      });
-    }
-
-    seed();
-
+    // ── Pulse dots ──────────────────────────────────────────────────────────
+    interface Pulse { branch: Branch; t: number; speed: number; }
+    const pulses: Pulse[] = [];
     function spawnPulse(b: Branch) {
       if (!b.done) return;
-      pulses.push({ branch: b, t: 0, speed: 0.004 + Math.random() * 0.007 });
+      pulses.push({ branch: b, t: 0, speed: 0.005 + Math.random() * 0.006 });
     }
 
+    // ── Seed branches from corners & edges ──────────────────────────────────
+    function seed() {
+      const w = canvas.width, h = canvas.height;
+
+      // Diagonal "spine" seeds — like the image's dominant diagonal streaks
+      const diagSeeds: Array<{ x: number; y: number; dir: Dir }> = [
+        { x: w * 0.05, y: h * 0.05, dir: "dr" },
+        { x: w * 0.1,  y: h * 0.0,  dir: "dr" },
+        { x: w * 0.55, y: h * 0.0,  dir: "dr" },
+        { x: w * 0.62, y: h * 0.05, dir: "dl" },
+        { x: w * 1.0,  y: h * 0.3,  dir: "dl" },
+        { x: w * 1.0,  y: h * 0.55, dir: "ul" },
+        { x: w * 0.0,  y: h * 0.1,  dir: "dr" },
+        { x: w * 0.85, y: h * 0.15, dir: "dl" },
+      ];
+
+      // Orthogonal fringe seeds scattered around
+      const orthSeeds: Array<{ x: number; y: number; dir: Dir }> = [
+        { x: w * 0.02 + Math.random() * w * 0.1, y: h * 0.05 + Math.random() * h * 0.1, dir: "right" },
+        { x: w * 0.7  + Math.random() * w * 0.25, y: Math.random() * h * 0.4, dir: "left"  },
+        { x: w * 0.6  + Math.random() * w * 0.35, y: h * 0.5 + Math.random() * h * 0.4, dir: "up"   },
+        { x: Math.random() * w * 0.3, y: h * 0.6 + Math.random() * h * 0.35, dir: "right" },
+      ];
+
+      [...diagSeeds, ...orthSeeds].forEach(({ x, y, dir }) => {
+        branches.push(makeBranch(x, y, dir, 110, 0));
+      });
+    }
+    seed();
+
+    // ── Spawn children on branch completion ─────────────────────────────────
     function spawnChildren(b: Branch) {
       if (b.spawned || b.depth >= MAX_DEPTH) return;
       b.spawned = true;
 
       const candidates = CHILD_DIRS[b.dir];
-      const maxKids = Math.max(1, 4 - Math.floor(b.depth * 0.6));
+      // Number of children: 1–3, fewer as depth increases
+      const maxKids = Math.max(1, 3 - Math.floor(b.depth * 0.7));
       const numKids = 1 + Math.floor(Math.random() * maxKids);
 
       const used = new Set<Dir>();
       for (let i = 0; i < numKids; i++) {
-        if (Math.random() < 0.08) continue;
-
+        if (Math.random() < 0.12) continue; // dead end
         let dir: Dir;
         let tries = 0;
         do {
           dir = candidates[Math.floor(Math.random() * candidates.length)];
           tries++;
-        } while (used.has(dir) && tries < 10);
+        } while (used.has(dir) && tries < 8);
         used.add(dir);
 
-        const maxLen = Math.max(25, 125 - b.depth * 16);
+        const maxLen = Math.max(20, 90 - b.depth * 14);
         branches.push(makeBranch(b.tx, b.ty, dir, maxLen, b.depth + 1));
       }
 
-      // More frequent pulses for lively feel
-      if (Math.random() < 0.55) {
-        setTimeout(() => spawnPulse(b), 300 + Math.random() * 700);
-      }
+      if (Math.random() < 0.35) setTimeout(() => spawnPulse(b), 500 + Math.random() * 900);
     }
 
-    // Occasional reseed + cleanup
+    // ── Re-seed when sparse ─────────────────────────────────────────────────
     const reseeder = setInterval(() => {
       const live = branches.filter(b => !b.fading).length;
-      if (live < 18) seed();
-
-      // Fade out oldest deep branches
+      if (live < 24) seed();
       branches
-        .filter(b => b.done && !b.fading && b.depth >= MAX_DEPTH - 2)
+        .filter(b => b.done && !b.fading && b.depth >= MAX_DEPTH - 1)
         .sort(() => Math.random() - 0.5)
-        .slice(0, 5)
+        .slice(0, 4)
         .forEach(b => { b.fading = true; });
-    }, 1800);
+    }, 2000);
 
+    // ── Main draw loop ──────────────────────────────────────────────────────
     function draw() {
       animId = requestAnimationFrame(draw);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw branches
       for (let i = branches.length - 1; i >= 0; i--) {
         const b = branches[i];
 
+        // Grow toward target
         if (!b.done) {
-          const dx = b.tx - b.cx;
-          const dy = b.ty - b.cy;
-          const dist = Math.hypot(dx, dy);
-
+          const dx = b.tx - b.cx, dy = b.ty - b.cy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist <= b.speed) {
-            b.cx = b.tx;
-            b.cy = b.ty;
+            b.cx = b.tx; b.cy = b.ty;
             b.done = true;
-            setTimeout(() => spawnChildren(b), 40 + Math.random() * 160);
+            setTimeout(() => spawnChildren(b), 60 + Math.random() * 180);
           } else {
-            const move = b.speed / dist;
-            b.cx += dx * move;
-            b.cy += dy * move;
+            b.cx += (dx / dist) * b.speed;
+            b.cy += (dy / dist) * b.speed;
           }
         }
 
+        // Fade out
         if (b.fading) {
-          b.alpha -= 0.006;
-          if (b.alpha <= 0) {
-            branches.splice(i, 1);
-            continue;
-          }
+          b.alpha -= 0.004;
+          if (b.alpha <= 0) { branches.splice(i, 1); continue; }
         }
 
-        ctx.globalAlpha = b.alpha * 0.85;
+        ctx.globalAlpha = b.alpha * 0.78;
         ctx.shadowColor = GLOW_COLOR;
-        ctx.shadowBlur = 12;           // stronger glow
+        ctx.shadowBlur  = 6;
         ctx.strokeStyle = LINE_COLOR;
-        ctx.lineWidth = 1.8;           // slightly thicker lines
-        ctx.lineCap = "round";
+        ctx.lineWidth   = 1.15;
+        ctx.lineCap     = "round";
 
+        // Trace line
         ctx.beginPath();
         ctx.moveTo(b.x, b.y);
         ctx.lineTo(b.cx, b.cy);
         ctx.stroke();
 
         // Start dot
-        ctx.shadowBlur = 10;
-        ctx.fillStyle = DOT_COLOR;
+        ctx.fillStyle  = DOT_COLOR;
+        ctx.shadowBlur = 9;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, 2.4, 0, Math.PI * 2);
+        ctx.arc(b.x, b.y, 2.2, 0, Math.PI * 2);
         ctx.fill();
 
-        // End dot
+        // End dot when done
         if (b.done) {
           ctx.beginPath();
-          ctx.arc(b.tx, b.ty, b.depth >= MAX_DEPTH - 1 ? 1.6 : 2.8, 0, Math.PI * 2);
+          ctx.arc(b.tx, b.ty, b.depth === MAX_DEPTH ? 1.4 : 2.7, 0, Math.PI * 2);
           ctx.fill();
         }
       }
 
-      // Pulse dots (traveling signals)
+      // Pulse dots
       for (let i = pulses.length - 1; i >= 0; i--) {
         const p = pulses[i];
         p.t += p.speed;
-
-        if (p.t > 1 || p.branch.fading) {
-          pulses.splice(i, 1);
-          continue;
-        }
-
-        const px = p.branch.x + (p.branch.tx - p.branch.x) * p.t;
-        const py = p.branch.y + (p.branch.ty - p.branch.y) * p.t;
-
-        ctx.globalAlpha = 0.95 - p.t * 0.3;
-        ctx.fillStyle = "#ffffff";
-        ctx.shadowColor = "#67e8f9";
-        ctx.shadowBlur = 18;
+        if (p.t > 1 || p.branch.fading) { pulses.splice(i, 1); continue; }
+        const px = p.branch.x  + (p.branch.tx - p.branch.x)  * p.t;
+        const py = p.branch.y  + (p.branch.ty - p.branch.y)  * p.t;
+        ctx.globalAlpha = 0.92;
+        ctx.fillStyle   = "#ffffff";
+        ctx.shadowColor = LINE_COLOR;
+        ctx.shadowBlur  = 14;
         ctx.beginPath();
-        ctx.arc(px, py, 2.6, 0, Math.PI * 2);
+        ctx.arc(px, py, 2.4, 0, Math.PI * 2);
         ctx.fill();
       }
 
       ctx.globalAlpha = 1;
-      ctx.shadowBlur = 0;
+      ctx.shadowBlur  = 0;
     }
 
     draw();
@@ -258,7 +241,7 @@ export function CircuitCanvas() {
     <canvas
       ref={canvasRef}
       className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ opacity: 0.85 }}   // slightly more visible to match image intensity
+      style={{ opacity: 0.6 }}
     />
   );
 }
