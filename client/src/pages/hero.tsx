@@ -294,11 +294,13 @@ export function HeroCard() {
                 Digital<br />Creation
               </div>
               <p style={{ fontSize: '18px', color: '#ffffff', marginBottom: '24px', lineHeight: 1.6 }}>
-                Engineering the Future. 
+                Engineering the Future.
               </p>
               <button className="btn btn-primary" style={{ maxWidth: '200px' }}>Explore Software</button>
             </div>
           </div>
+
+
 
           {/* ── Light right panel ── */}
           <div className="right-panel" />
