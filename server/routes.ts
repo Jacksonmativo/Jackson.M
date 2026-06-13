@@ -1,6 +1,5 @@
 import type { Express } from "express";
 import type { Server } from "http";
-import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 
@@ -8,11 +7,20 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  // Contact form endpoint (NO DATABASE)
   app.post(api.contact.create.path, async (req, res) => {
     try {
       const input = api.contact.create.input.parse(req.body);
-      const message = await storage.createMessage(input);
-      res.status(201).json(message);
+
+      // Instead of saving to DB, just log it
+      console.log("📩 New contact message:", input);
+
+      res.status(201).json({
+        success: true,
+        message: "Message received successfully!",
+      });
+
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({

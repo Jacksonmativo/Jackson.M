@@ -14,7 +14,7 @@
     --background: 240 10% 4%;
     --foreground: 0 0% 100%;
     --border: 240 20% 15%;
-    
+
     --arch-blue: 213 94% 68%;
     --cyber-green: 351 82% 40%;
     --soft-purple: 250 89% 65%;
@@ -29,7 +29,7 @@
     font-family: var(--font-display);
     @apply font-bold tracking-tight;
   }
-  
+
   code, pre, .font-mono {
     font-family: var(--font-mono);
   }
@@ -50,9 +50,9 @@
   .overflow-y-auto {
     scroll-behavior: smooth;
   }
-  
+
   .bg-blueprint-grid {
-    background-image: 
+    background-image:
       linear-gradient(hsla(var(--arch-blue) / 0.1) 1px, transparent 1px),
       linear-gradient(90deg, hsla(var(--arch-blue) / 0.1) 1px, transparent 1px),
       linear-gradient(hsla(var(--arch-blue) / 0.05) 1px, transparent 1px),
@@ -62,7 +62,7 @@
   }
 
   .bg-cyber-grid {
-    background-image: 
+    background-image:
       linear-gradient(hsla(var(--cyber-green) / 0.05) 1px, transparent 1px),
       linear-gradient(90deg, hsla(var(--cyber-green) / 0.05) 1px, transparent 1px);
     background-size: 40px 40px;
@@ -71,7 +71,7 @@
   .glass-panel {
     @apply bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl;
   }
-  
+
   /* Hide scrollbar for a cleaner cinematic look */
   ::-webkit-scrollbar {
     width: 8px;

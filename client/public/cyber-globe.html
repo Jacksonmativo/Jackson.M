@@ -8,9 +8,36 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { margin: 0; overflow: hidden; background: #000008; width: 100vw; height: 100vh; }
         canvas { display: block; width: 100% !important; height: 100% !important; }
+
+        /* ── Name Overlay Behind Globe ── */
+        .globe-name-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            pointer-events: none;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: clamp(3rem, 12vw, 8rem);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            text-align: center;
+            color: rgba(0, 229, 255, 0.08);
+            text-shadow:
+                0 0 40px rgba(0, 229, 255, 0.1),
+                0 0 80px rgba(255, 61, 107, 0.05);
+            line-height: 1.2;
+            font-weight: bold;
+        }
     </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div class="globe-name-overlay">
+        Jackson Mativo
+    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         // ── Helpers ───────────────────────────────────────────────────────────
@@ -102,7 +129,7 @@
 
             function draw(color) {
                 ctx.clearRect(0, 0, cw, ch);
-                ctx.font = 'bold 15px monospace';
+                ctx.font = 'bold 35px monospace';
                 ctx.fillStyle = color;
                 ctx.textAlign    = 'center';
                 ctx.textBaseline = 'middle';
@@ -186,28 +213,40 @@
                 ctx2.drawImage(tex.image, 0, 0);
                 const px = ctx2.getImageData(0, 0, off.width, off.height).data;
 
-                const geo = new THREE.BufferGeometry();
-                const pos = [], col = [];
-                for (let t = 0; t < 540; t++) {
-                    const theta = (t / 540) * Math.PI;
-                    for (let p = 0; p < 1080; p++) {
-                        const phi = (p / 1080) * 2 * Math.PI;
-                        const x = 1.01 * Math.sin(theta) * Math.cos(phi);
-                        const y = 1.01 * Math.sin(theta) * Math.sin(phi);
-                        const z = 1.01 * Math.cos(theta);
-                        const u = (Math.atan2(x, z) / (2*Math.PI) + 0.5) * off.width;
+                const dotGeometry = new THREE.BufferGeometry();
+                const positions = [];
+                const colors = [];
+                const radius = 1.01;
+                const phiSteps = 720;
+                const thetaSteps = 360;
+                const maxDots = 200000;
+                let dotCount = 0;
+
+                outer: for (let t = 0; t < thetaSteps; t++) {
+                    const theta = (t / thetaSteps) * Math.PI;
+                    for (let p = 0; p < phiSteps; p++) {
+                        const phi = (p / phiSteps) * 2 * Math.PI;
+                        const x = radius * Math.sin(theta) * Math.cos(phi);
+                        const y = radius * Math.sin(theta) * Math.sin(phi);
+                        const z = radius * Math.cos(theta);
+                        const u = (Math.atan2(x, z) / (2 * Math.PI) + 0.5) * off.width;
                         const v = (0.5 - Math.asin(y) / Math.PI) * off.height;
                         const i = (Math.floor(u) + Math.floor(v) * off.width) * 4;
-                        if (px[i+2] < 150 && (px[i] > 70 || px[i+1] > 50)) {
-                            pos.push(x, y, z);
+
+                        if (px[i + 2] < 150 && (px[i] > 70 || px[i + 1] > 50)) {
+                            positions.push(x, y, z);
                             const br = 0.5 + 0.5 * Math.random();
-                            col.push(br * 0.2, br * 0.6, br);
+                            colors.push(br * 0.2, br * 0.6, br);
+                            dotCount += 1;
+
+                            if (dotCount >= maxDots) break outer;
                         }
                     }
                 }
-                geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-                geo.setAttribute('color',    new THREE.Float32BufferAttribute(col, 3));
-                globeGroup.add(new THREE.Points(geo, new THREE.PointsMaterial({
+
+                dotGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                dotGeometry.setAttribute('color',    new THREE.Float32BufferAttribute(colors, 3));
+                globeGroup.add(new THREE.Points(dotGeometry, new THREE.PointsMaterial({
                     size: isMobile() ? 0.013 : 0.010,
                     vertexColors: true, transparent: true, opacity: 0.85, alphaTest: 0.3
                 })));

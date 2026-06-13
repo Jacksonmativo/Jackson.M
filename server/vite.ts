@@ -1,6 +1,7 @@
 import { type Express } from "express";
 import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
+import { execSync } from "child_process";
 import viteConfig from "../vite.config";
 import fs from "fs";
 import path from "path";
@@ -8,10 +9,18 @@ import { nanoid } from "nanoid";
 
 const viteLogger = createLogger();
 
+const wslHost = (() => {
+  try {
+    return execSync("hostname -I").toString().trim().split(" ")[0];
+  } catch {
+    return "localhost";
+  }
+})();
+
 export async function setupVite(server: Server, app: Express) {
   const serverOptions = {
     middlewareMode: true,
-    hmr: { server, path: "/vite-hmr" },
+    hmr: { server, path: "/vite-hmr", clientPort: 5000, host: wslHost },
     allowedHosts: true as const,
   };
 

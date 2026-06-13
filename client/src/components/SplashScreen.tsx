@@ -13,7 +13,7 @@ export default function SplashScreen() {
   }
 
   useEffect(() => {
-    const timer = setTimeout(() => dismiss(), 8000);
+    const timer = setTimeout(() => dismiss(), 12000);
     const onScroll = () => dismiss();
     const onKey = (e: KeyboardEvent) => { if (e.key !== "Tab") dismiss(); };
     window.addEventListener("scroll",  onScroll, { passive: true });
@@ -35,30 +35,31 @@ export default function SplashScreen() {
           initial={{ opacity: 1 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.7, ease: "easeInOut" }}
+          transition={{ duration: 0.12, ease: "easeInOut" }}
           onClick={dismiss}
           onTouchStart={dismiss}
-          className="fixed top-0 left-0 right-0 z-[9999] overflow-hidden cursor-pointer select-none bg-black"
-          style={{ height: "28vh" }}
+          className="fixed inset-0 z-[9999] overflow-hidden cursor-pointer select-none bg-none flex items-center justify-center"
         >
-          <video
-            src={splashVideo}
-            autoPlay
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-          />
+          <div className="relative w-full h-full max-w-4xl aspect-video max-h-[60vh] md:max-h-[70vh] lg:max-h-screen">
+            <video
+              src={splashVideo}
+              autoPlay
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-contain"
+            />
 
-          {/* Tap hint — bottom center */}
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.7, 0.35, 0.7] }}
-            transition={{ delay: 1.5, duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute bottom-2 left-0 right-0 text-center text-xs uppercase tracking-[0.22em] text-white/60 font-medium"
-            style={{ fontFamily: "'Geist', sans-serif" }}
-          >
-            Tap to skip
-          </motion.p>
+            {/* Tap hint — bottom center */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.7, 0.35, 0.7] }}
+              transition={{ delay: 1.5, duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute bottom-2 left-0 right-0 text-center text-xs uppercase tracking-[0.22em] text-white/60 font-medium"
+              style={{ fontFamily: "'Geist', sans-serif" }}
+            >
+              Tap to skip
+            </motion.p>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

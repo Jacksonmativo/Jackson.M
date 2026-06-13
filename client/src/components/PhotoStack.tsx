@@ -16,6 +16,7 @@ const STACK_CONFIGS = [
   { rotate: -5,  x: -7, y:  9,  scale: 0.95, zIndex:  9, opacity: 0.85 },
   { rotate:  7,  x:  9, y: 16,  scale: 0.90, zIndex:  8, opacity: 0.70 },
   { rotate: -3,  x: -4, y: 22,  scale: 0.85, zIndex:  7, opacity: 0.55 },
+  { rotate: -4,  x: -3, y: 20,  scale: 0.92, zIndex:  6, opacity: 0.60 }
 ];
 
 const THEME_BADGE: Record<string, string> = {
