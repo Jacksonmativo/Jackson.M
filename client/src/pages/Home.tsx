@@ -24,7 +24,6 @@ import elg6 from "@assets/IMG-20251203-WA0004_1773289895761.jpg";
 import elg7 from "@assets/IMG-20251203-WA0001_1773289895790.jpg";
 import elg8 from "@assets/IMG-20251203-WA0002_1773289895820.jpg";
 import elg9 from "@assets/IMG-20240416-WA0014_1773289895851.jpg";
-import houseAnimation from "@assets/3D_House_Animation_1773137939467.mp4";
 import piiShieldCover from "@assets/Secure_AI_interaction_with_PIIShieldPad_1773296871272.png";
 import siteOriginCover from "@assets/image_(6)_1773308318134.jpg";
 import micro1 from "@assets/Screenshot_20260312_124128_WhatsAppBusiness_1773309027946.jpg";
@@ -1083,11 +1082,6 @@ function ArchitectureSection({ projects, onProjectClick, contactForm, scrollerRe
           <h2 className="text-4xl md:text-5xl font-bold mb-12 text-glow-arch">Architecture Projects</h2>
           <ProjectCarousel projects={projects} theme="arch" onProjectClick={onProjectClick} />
         </motion.div>
-      </section>
-
-      {/* ── House animation ────────────────────────────────────────────────── */}
-      <section className="relative z-10 bg-black w-screen h-screen flex items-center justify-center overflow-hidden">
-        <video src={houseAnimation} autoPlay muted loop playsInline className="w-full h-full object-contain" />
       </section>
 
       {/* ── Contact ────────────────────────────────────────────────────────── */}
