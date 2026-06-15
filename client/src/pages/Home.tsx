@@ -535,7 +535,8 @@ function AnimLine({
                opacity 0.5s ease ${delay}s`
             : "none",
         }}
-        className={`text-5xl md:text-6xl lg:text-7xl font-black leading-tight whitespace-nowrap ${
+        style={{ fontSize: "clamp(1.1rem, 5.5vw, 4.5rem)" }}
+        className={`font-black leading-tight whitespace-nowrap ${
           blue ? "text-blue-400" : "text-white"
         }`}
       >
@@ -572,7 +573,8 @@ function GlowLine({ visible }: { visible: boolean }) {
               }
             : {}
         }
-        className="text-5xl md:text-6xl lg:text-7xl font-black leading-tight text-blue-800 whitespace-nowrap"
+        style={{ fontSize: "clamp(1.1rem, 5.5vw, 4.5rem)" }}
+        className="font-black leading-tight whitespace-nowrap text-blue-800"
       >
         Building Dreams.
       </motion.div>
@@ -679,6 +681,7 @@ function ArchitectureSection({ projects, onProjectClick, contactForm, scrollerRe
   // scrollUnlocked becomes true 1.8 s after textVisible — that's when all
   // three lines + sub-paragraph have finished animating
   const [scrollUnlocked, setScrollUnlocked] = useState(false);
+  const stickyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = introRef.current;
@@ -707,34 +710,37 @@ function ArchitectureSection({ projects, onProjectClick, contactForm, scrollerRe
     return () => scroller.removeEventListener("scroll", handleScroll);
   }, [scrollUnlocked, scrollerRef]);
 
-  // When images align → lock scroll → wait for text animation → unlock
+  // ── FIX: fade out → collapse layout → fade back in, no blink ──
   useEffect(() => {
     if (!textVisible) return;
     const scroller = scrollerRef?.current;
-    if (!scroller) return;
+    const sticky = stickyRef?.current;
+    if (!scroller || !sticky) return;
 
-    // freeze scrolling on the container
     const prev = scroller.style.overflowY;
     scroller.style.overflowY = "hidden";
 
-    // Line 1: 0s delay + 0.8s = done 0.8s
-    // Line 2: 0.2s + 0.8s    = done 1.0s
-    // Line 3: 0.4s + 0.8s    = done 1.2s
-    // Buttons: 0.75s + 0.6s  = done 1.35s
-    // feature bar: 0.9s + 0.7s = done 1.6s
-    // → unlock at 1.8 s (comfortable margin)
     const t = setTimeout(() => {
-      // Lock progress at fully-merged before the wrapper collapses, so the
-      // bg1/bg2 layers stay in their final aligned position.
       setProgress(1);
 
-      // Collapse the 250vh wrapper down to 100vh (see render below) and
-      // reset the scroll position so the user lands at the top of the
-      // now-100vh hero with no leftover empty space beneath it.
-      scroller.scrollTop = 0;
+      // 1. Instantly hide the sticky hero (no transition — must be immediate)
+      sticky.style.transition = "none";
+      sticky.style.opacity = "0";
 
-      scroller.style.overflowY = prev || "auto";
-      setScrollUnlocked(true);
+      // 2. Next frame: do all disruptive DOM/state changes while invisible
+      requestAnimationFrame(() => {
+        scroller.scrollTop = 0;
+        setScrollUnlocked(true);
+
+        // 3. Two frames later the layout has settled — fade back in smoothly
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            sticky.style.transition = "opacity 0.15s ease";
+            sticky.style.opacity = "1";
+            scroller.style.overflowY = prev || "auto";
+          });
+        });
+      });
     }, 1800);
 
     return () => clearTimeout(t);
@@ -746,176 +752,229 @@ function ArchitectureSection({ projects, onProjectClick, contactForm, scrollerRe
     <div className="w-full">
 
       {/* ══════════════════════════════════════════════════════════════════════
-          Intro wrapper — 250vh while the scroll-driven merge animation is
-          running, then collapses to 100vh once the animation completes so
-          the sticky hero hands off cleanly to "Featured Work" below with
-          no leftover empty/black space.
-          Layer 0 → bgImage (BG.jpeg)   — visible from page load
-          Layer 1 → bg1 (left  half)    — slides DOWN from above on scroll
-          Layer 2 → bg2 (right half)    — slides UP   from below on scroll
-          Layer 3 → hero UI             — appears AFTER images fully align
+          MOBILE LAYOUT — the sticky wrapper is a flex-column:
+            Row 1  (flex-1, min-h-0)   — IMAGE AREA  (bg0 + bg1 + bg2 + text)
+            Row 2  (flex-shrink-0)     — CARD STRIP  (4 feature cards, 2×2 grid)
+          The cards are OUTSIDE the image area so they never overlap it.
+          bg1 (left half) + bg2 (right half) always sit side-by-side and
+          together form one seamless panoramic photo — no overlap, no gap.
+
+          DESKTOP — same structure but card strip is hidden (md:hidden) and the
+          feature bar is rendered inside the image area pinned to the bottom.
       ══════════════════════════════════════════════════════════════════════ */}
       <div
         ref={introRef}
         style={{ height: scrollUnlocked ? "100vh" : "250vh" }}
         className="relative"
       >
-        <div className="sticky top-0 h-screen overflow-hidden">
+        {/* sticky wrapper: flex-col so image + cards stack on mobile */}
+        <div
+          ref={stickyRef}
+          className="sticky top-0 h-screen overflow-hidden flex flex-col"
+        >
 
-          {/* ── LAYER 0: bgImage — primary background ── */}
-          <img src={bgImage} alt="" className="absolute inset-0 w-full h-full object-cover z-0" />
+          {/* ── ROW 1: IMAGE AREA ──────────────────────────────────────────── */}
+          <div className="relative flex-1 overflow-hidden min-h-0">
 
-          {/* ── LAYER 1: bg1 — left half, slides from above ── */}
-          <div
-            className="absolute left-0 w-1/2 overflow-hidden z-10"
-            style={{ top: "-100vh", height: "100vh", transform: `translateY(${offset}vh)`, willChange: "transform" }}
-          >
-            <img
-              src={bg1Image} alt=""
-              className="w-full h-full object-cover"
-              style={{ objectPosition: "right center" }}
-            />
-          </div>
+            {/* LAYER 0 — base bg, visible before panels arrive */}
+            <img src={bgImage} alt=""
+              className="absolute inset-0 w-full h-full object-cover z-0" />
 
-          {/* ── LAYER 2: bg2 — right half, slides from below ── */}
-          <div
-            className="absolute right-0 w-1/2 overflow-hidden z-10"
-            style={{ top: "100vh", height: "100vh", transform: `translateY(${-offset}vh)`, willChange: "transform" }}
-          >
-            <img
-              src={bg2Image} alt=""
-              className="w-full h-full object-cover"
-              style={{ objectPosition: "left center" }}
-            />
-          </div>
-
-          {/* ── LAYER 3: full hero UI — fades in after images align ── */}
-          <div className="absolute inset-0 z-20 flex flex-col">
-
-            {/* ── Social icons — vertical strip on far left ── */}
+            {/* LAYER 1 — bg1: occupies the LEFT half of the image area.
+                Starts 100% of the CONTAINER height above it, slides down.
+                objectPosition "right center" shows the right side of bg1.jpg
+                which is the seam that must align with bg2's left edge. */}
             <div
-              className="absolute left-5 top-1/2 -translate-y-1/2 flex flex-col gap-5"
+              className="absolute left-0 w-1/2 z-10 overflow-hidden"
               style={{
-                opacity: textVisible ? 1 : 0,
-                transition: textVisible ? "opacity 0.6s ease 1.7s" : "none",
+                top: "-100%",
+                height: "100%",
+                transform: `translateY(${offset}%)`,
+                willChange: "transform",
               }}
             >
-              {socialLinks.map(({ icon: Icon, href }) => (
-                <a
-                  key={href}
-                  href={href}
-                  className="w-8 h-8 rounded-full border border-white/20 bg-white/5 flex items-center justify-center hover:bg-blue-500/30 hover:border-blue-400/50 transition-all"
-                >
-                  <Icon className="w-3.5 h-3.5 text-white/70" />
-                </a>
-              ))}
+              <img
+                src={bg1Image} alt=""
+                className="w-full h-full object-cover"
+                style={{ objectPosition: "right center" }}
+              />
             </div>
 
-            {/* ── Main content — left-aligned ── */}
-            <div className="flex-1 flex items-center pl-20 md:pl-24 pr-8 pt-16">
-              <div>
+            {/* LAYER 2 — bg2: occupies the RIGHT half of the image area.
+                Starts 100% of the CONTAINER height below it, slides up.
+                objectPosition "left center" shows the left side of bg2.jpg
+                which is the seam that must align with bg1's right edge. */}
+            <div
+              className="absolute right-0 w-1/2 z-10 overflow-hidden"
+              style={{
+                bottom: "-100%",
+                height: "100%",
+                transform: `translateY(${-offset}%)`,
+                willChange: "transform",
+              }}
+            >
+              <img
+                src={bg2Image} alt=""
+                className="w-full h-full object-cover"
+                style={{ objectPosition: "left center" }}
+              />
+            </div>
 
-                {/* Badge */}
-                <div
-                  style={{
-                    opacity: textVisible ? 1 : 0,
-                    transform: textVisible ? "translateY(0)" : "translateY(12px)",
-                    transition: textVisible ? "opacity 0.5s ease 0s, transform 0.5s ease 0s" : "none",
-                  }}
-                  className="inline-flex items-center gap-2 mb-6"
-                >
-                  <span className="w-1 h-6 bg-blue-800 rounded-full" />
-                  <span className="text-white/80 font-mono text-xs md:text-sm tracking-widest uppercase">
-                    We Design. You Dream. We Build.
-                  </span>
+            {/* LAYER 3 — hero text UI, floats over the image */}
+            <div className="absolute inset-0 z-20 flex flex-col">
+
+              {/* Social icons — desktop only */}
+              <div
+                className="hidden md:flex absolute left-5 top-1/2 -translate-y-1/2 flex-col gap-5"
+                style={{
+                  opacity: textVisible ? 1 : 0,
+                  transition: textVisible ? "opacity 0.6s ease 1.7s" : "none",
+                }}
+              >
+                {socialLinks.map(({ icon: Icon, href }) => (
+                  <a key={href} href={href}
+                    className="w-8 h-8 rounded-full border border-white/20 bg-white/5 flex items-center justify-center hover:bg-blue-500/30 hover:border-blue-400/50 transition-all">
+                    <Icon className="w-3.5 h-3.5 text-white/70" />
+                  </a>
+                ))}
+              </div>
+
+              {/* Main text — centred vertically in image area */}
+              <div className="flex-1 flex items-center pl-4 md:pl-24 pr-4 md:pr-8 pt-16">
+                <div className="w-full">
+
+                  {/* Badge */}
+                  <div
+                    style={{
+                      opacity: textVisible ? 1 : 0,
+                      transform: textVisible ? "translateY(0)" : "translateY(12px)",
+                      transition: textVisible ? "opacity 0.5s ease 0s, transform 0.5s ease 0s" : "none",
+                    }}
+                    className="inline-flex items-center gap-2 mb-2 md:mb-6"
+                  >
+                    <span className="w-1 h-4 md:h-6 bg-blue-800 rounded-full" />
+                    <span className="text-white/80 font-mono text-[9px] md:text-sm tracking-widest uppercase">
+                      We Design. You Dream. We Build.
+                    </span>
+                  </div>
+
+                  {/* Heading — clamp keeps it on one line on any mobile width */}
+                  <div className="mb-2 md:mb-6 space-y-0">
+                    <AnimLine visible={textVisible} delay={0}>Designing Structures.</AnimLine>
+                    <AnimLine visible={textVisible} delay={0.2}>Creating Spaces.</AnimLine>
+                    <GlowLine visible={textVisible} />
+                  </div>
                 </div>
+              </div>
 
-                {/* Three-line animated heading — 0.8s each, 0.2s stagger */}
-                <div className="mb-6 space-y-0">
-                  <AnimLine visible={textVisible} delay={0}>Designing Structures.</AnimLine>
-                  <AnimLine visible={textVisible} delay={0.2}>Creating Spaces.</AnimLine>
-                  <GlowLine visible={textVisible} />
+              {/* Right arrow — desktop only */}
+              <div
+                className="hidden md:block absolute right-8 top-1/2 -translate-y-1/2"
+                style={{
+                  opacity: textVisible ? 1 : 0,
+                  transition: textVisible ? "opacity 0.6s ease 1.7s" : "none",
+                }}
+              >
+                <button className="w-12 h-12 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm flex items-center justify-center hover:bg-white/15 transition-all">
+                  <ChevronRight className="w-5 h-5 text-white/70" />
+                </button>
+              </div>
+
+              {/* Feature bar — DESKTOP only, pinned to bottom of image area */}
+              <div
+                className="hidden md:flex items-stretch border-t border-white/10 bg-black/40 backdrop-blur-md"
+                style={{
+                  opacity: textVisible ? 1 : 0,
+                  transform: textVisible ? "translateY(0)" : "translateY(20px)",
+                  transition: textVisible
+                    ? "opacity 0.7s ease 1.6s, transform 0.7s ease 1.6s"
+                    : "none",
+                }}
+              >
+                {archFeatures.map((f, i) => {
+                  const Icon = f.icon;
+                  return (
+                    <div key={f.title}
+                      className={`flex items-center gap-4 flex-1 px-5 py-4 ${i < archFeatures.length - 1 ? "border-r border-white/10" : ""}`}>
+                      <div className="w-10 h-10 rounded-full border border-blue-400/30 bg-blue-400/10 flex items-center justify-center flex-shrink-0">
+                        <Icon className="w-4 h-4 text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-white font-bold text-sm">{f.title}</p>
+                        <p className="text-white/45 text-xs leading-snug mt-0.5">{f.desc}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="flex items-center gap-3 px-5 border-l border-white/10 flex-shrink-0">
+                  <div className="w-7 h-10 rounded-full border border-white/30 flex flex-col items-center justify-start pt-1.5 gap-1">
+                    <div className="w-1 h-2 rounded-full bg-white/60 animate-bounce" />
+                  </div>
+                  <div className="text-white/50 text-[10px] leading-tight">
+                    <p className="font-semibold">Scroll Down</p>
+                    <p>to Explore</p>
+                  </div>
                 </div>
+              </div>
 
-                {/* Sub-paragraph — starts after line 3 lands */}
+            </div>
+            {/* end LAYER 3 */}
 
+            {/* Scroll cue — visible only before merge */}
+            <div
+              className="absolute bottom-4 md:bottom-24 inset-x-0 flex justify-center z-30 pointer-events-none"
+              style={{ opacity: Math.max(0, 1 - progress * 6) }}
+            >
+              <div className="flex flex-col items-center gap-2 text-white/50 text-xs tracking-widest uppercase">
+                <span>Scroll</span>
+                <svg width="16" height="24" viewBox="0 0 16 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="animate-bounce">
+                  <path d="M8 0v20M1 13l7 7 7-7" />
+                </svg>
               </div>
             </div>
 
-            {/* ── Right arrow (section nav hint) ── */}
-            <div
-              className="absolute right-8 top-1/2 -translate-y-1/2"
-              style={{
-                opacity: textVisible ? 1 : 0,
-                transition: textVisible ? "opacity 0.6s ease 1.7s" : "none",
-              }}
-            >
-              <button className="w-12 h-12 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm flex items-center justify-center hover:bg-white/15 transition-all ">
-                <ChevronRight className="w-5 h-5 text-white/70" />
-              </button>
-            </div>
+          </div>
+          {/* end IMAGE AREA */}
 
-            {/* ── Bottom feature bar ── */}
-            <div
-              style={{
-                opacity: textVisible ? 1 : 0,
-                transform: textVisible ? "translateY(0)" : "translateY(20px)",
-                transition: textVisible
-                  ? "opacity 0.7s ease 1.6s, transform 0.7s ease 1.6s"
-                  : "none",
-              }}
-              className="flex items-stretch border-t border-white/10 bg-black/40 backdrop-blur-md"
-            >
+          {/* ── ROW 2: MOBILE CARD STRIP ───────────────────────────────────
+              flex-shrink-0 → takes its natural height; image area fills rest.
+              Rendered BELOW the image, never over it.
+              Hidden on md+ (desktop uses the feature bar inside the image).
+          ──────────────────────────────────────────────────────────────── */}
+          <div
+            className="md:hidden flex-shrink-0 bg-black/95 border-t border-white/10"
+            style={{
+              opacity: textVisible ? 1 : 0,
+              transition: textVisible ? "opacity 0.7s ease 1.6s" : "none",
+            }}
+          >
+            <div className="grid grid-cols-2">
               {archFeatures.map((f, i) => {
                 const Icon = f.icon;
                 return (
                   <div
                     key={f.title}
-                    className={`flex items-center gap-4 flex-1 px-5 py-4 ${
-                      i < archFeatures.length - 1 ? "border-r border-white/10" : ""
-                    }`}
+                    className={`flex items-start gap-2 px-3 py-3
+                      ${i % 2 === 0 ? "border-r border-white/10" : ""}
+                      ${i < 2 ? "border-b border-white/10" : ""}
+                    `}
                   >
-                    <div className="w-10 h-10 rounded-full border border-blue-400/30 bg-blue-400/10 flex items-center justify-center flex-shrink-0">
-                      <Icon className="w-4 h-4 text-blue-400" />
+                    <div className="w-7 h-7 rounded-full border border-blue-400/30 bg-blue-400/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Icon className="w-3 h-3 text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-white font-bold text-xs md:text-sm">{f.title}</p>
-                      <p className="text-white/45 text-[10px] md:text-xs leading-snug mt-0.5">{f.desc}</p>
+                      <p className="text-white font-bold text-[11px] leading-tight">{f.title}</p>
+                      <p className="text-white/45 text-[10px] leading-snug mt-0.5">{f.desc}</p>
                     </div>
                   </div>
                 );
               })}
-
-              {/* Scroll Down indicator — far right of bar */}
-              <div className="flex items-center gap-3 px-5 border-l border-white/10 flex-shrink-0">
-                <div className="w-7 h-10 rounded-full border border-white/30 flex flex-col items-center justify-start pt-1.5 gap-1">
-                  <div className="w-1 h-2 rounded-full bg-white/60 animate-bounce" />
-                </div>
-                <div className="text-white/50 text-[10px] leading-tight">
-                  <p className="font-semibold">Scroll Down</p>
-                  <p>to Explore</p>
-                </div>
-              </div>
-            </div>
-
-          </div>
-          {/* ── end LAYER 3 ── */}
-
-          {/* scroll cue — visible ONLY before merge begins */}
-          <div
-            className="absolute bottom-24 inset-x-0 flex justify-center z-30 pointer-events-none"
-            style={{ opacity: Math.max(0, 1 - progress * 6) }}
-          >
-            <div className="flex flex-col items-center gap-2 text-white/50 text-xs tracking-widest uppercase">
-              <span>Scroll</span>
-              <svg width="16" height="24" viewBox="0 0 16 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="animate-bounce">
-                <path d="M8 0v20M1 13l7 7 7-7" />
-              </svg>
             </div>
           </div>
 
         </div>
       </div>
+      {/* ══════════════════════════════ END ANIMATED INTRO ══════════════════ */}
       {/* ══════════════════════════════ END ANIMATED INTRO ══════════════════ */}
 
       {/* ── Featured Work ──────────────────────────────────────────────────── */}
@@ -1282,5 +1341,4 @@ function ContactSection({ contactForm, theme }: any) {
       </motion.div>
     </section>
   );
-}
-
+  }
