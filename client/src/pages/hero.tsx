@@ -431,7 +431,7 @@ export function HeroCard() {
           bottom: 0;
           left: 50%;
           transform: translateX(-50%);
-          width: 380px;
+          width: 480px;
           height: 100%;
           object-fit: cover;
           object-position: center top;

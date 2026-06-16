@@ -534,8 +534,8 @@ function AnimLine({
             ? `transform 0.8s cubic-bezier(0.22,1,0.36,1) ${delay}s,
                opacity 0.5s ease ${delay}s`
             : "none",
+          fontSize: "clamp(1.1rem, 5.5vw, 4.5rem)",
         }}
-        style={{ fontSize: "clamp(1.1rem, 5.5vw, 4.5rem)" }}
         className={`font-black leading-tight whitespace-nowrap ${
           blue ? "text-blue-400" : "text-white"
         }`}
@@ -558,22 +558,8 @@ function GlowLine({ visible }: { visible: boolean }) {
             ? `transform 0.8s cubic-bezier(0.22,1,0.36,1) 0.4s,
                opacity 0.5s ease 0.4s`
             : "none",
+          fontSize: "clamp(1.1rem, 5.5vw, 4.5rem)",
         }}
-
-        transition={
-          visible
-            ? {
-                textShadow: {
-                  delay: 1.4,          // starts after all 3 lines finished
-                  duration: 3,
-                  repeat: Infinity,
-                  repeatDelay: 2,
-                  ease: "easeInOut",
-                },
-              }
-            : {}
-        }
-        style={{ fontSize: "clamp(1.1rem, 5.5vw, 4.5rem)" }}
         className="font-black leading-tight whitespace-nowrap text-blue-800"
       >
         Building Dreams.
@@ -682,25 +668,19 @@ function ArchitectureSection({ projects, onProjectClick, contactForm, scrollerRe
   // three lines + sub-paragraph have finished animating
   const [scrollUnlocked, setScrollUnlocked] = useState(false);
   const stickyRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const el = introRef.current;
     const scroller = scrollerRef?.current;
     if (!el || !scroller) return;
 
     const handleScroll = () => {
-      // Once unlocked, the wrapper has collapsed to 100vh and progress is
-      // pinned at 1 — stop recalculating from scroll position so we don't
-      // divide by a (near-)zero / negative `scrollable` value.
-      if (scrollUnlocked) return;
-
       const scrollable = el.offsetHeight - scroller.clientHeight;
       if (scrollable <= 0) return;
       const raw   = Math.max(0, Math.min(1, scroller.scrollTop / scrollable));
       const eased = 1 - Math.pow(1 - raw, 3);
       setProgress(eased);
 
-      if (raw >= 0.97) {
+      if (raw >= 0.97 && !scrollUnlocked) {
         setTextVisible(true);
       }
     };
@@ -711,41 +691,22 @@ function ArchitectureSection({ projects, onProjectClick, contactForm, scrollerRe
   }, [scrollUnlocked, scrollerRef]);
 
   // ── FIX: fade out → collapse layout → fade back in, no blink ──
-  useEffect(() => {
-    if (!textVisible) return;
-    const scroller = scrollerRef?.current;
-    const sticky = stickyRef?.current;
-    if (!scroller || !sticky) return;
+    useEffect(() => {
+  if (!textVisible) return;
+  const scroller = scrollerRef?.current;
+  const sticky = stickyRef?.current;
+  if (!scroller || !sticky) return;
 
-    const prev = scroller.style.overflowY;
-    scroller.style.overflowY = "hidden";
+  const prev = scroller.style.overflowY;
+  scroller.style.overflowY = "hidden";
 
-    const t = setTimeout(() => {
-      setProgress(1);
+  const t = setTimeout(() => {
+    scroller.style.overflowY = prev || "auto";
+    setScrollUnlocked(true);
+  }, 2400);
 
-      // 1. Instantly hide the sticky hero (no transition — must be immediate)
-      sticky.style.transition = "none";
-      sticky.style.opacity = "0";
-
-      // 2. Next frame: do all disruptive DOM/state changes while invisible
-      requestAnimationFrame(() => {
-        scroller.scrollTop = 0;
-        setScrollUnlocked(true);
-
-        // 3. Two frames later the layout has settled — fade back in smoothly
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            sticky.style.transition = "opacity 0.15s ease";
-            sticky.style.opacity = "1";
-            scroller.style.overflowY = prev || "auto";
-          });
-        });
-      });
-    }, 1800);
-
-    return () => clearTimeout(t);
+  return () => clearTimeout(t);
   }, [textVisible, scrollerRef]);
-
   const offset = progress * 100;
 
   return (
@@ -764,7 +725,7 @@ function ArchitectureSection({ projects, onProjectClick, contactForm, scrollerRe
       ══════════════════════════════════════════════════════════════════════ */}
       <div
         ref={introRef}
-        style={{ height: scrollUnlocked ? "100vh" : "250vh" }}
+        style={{ height: "250vh" }}
         className="relative"
       >
         {/* sticky wrapper: flex-col so image + cards stack on mobile */}
@@ -831,8 +792,8 @@ function ArchitectureSection({ projects, onProjectClick, contactForm, scrollerRe
                   transition: textVisible ? "opacity 0.6s ease 1.7s" : "none",
                 }}
               >
-                {socialLinks.map(({ icon: Icon, href }) => (
-                  <a key={href} href={href}
+                {socialLinks.map(({ icon: Icon, href }, i) => (
+                  <a key={i} href={href}
                     className="w-8 h-8 rounded-full border border-white/20 bg-white/5 flex items-center justify-center hover:bg-blue-500/30 hover:border-blue-400/50 transition-all">
                     <Icon className="w-3.5 h-3.5 text-white/70" />
                   </a>
