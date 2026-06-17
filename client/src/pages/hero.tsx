@@ -562,7 +562,7 @@ export function HeroCard() {
 
             <div className="hero-stats">
               <div>
-                <div className="stat-n">5+</div>
+                <div className="stat-n">2+</div>
                 <div className="stat-l">Years</div>
               </div>
               <div>
@@ -570,7 +570,7 @@ export function HeroCard() {
                 <div className="stat-l">Projects</div>
               </div>
               <div>
-                <div className="stat-n">10+</div>
+                <div className="stat-n">6+</div>
                 <div className="stat-l">Tech</div>
               </div>
             </div>
