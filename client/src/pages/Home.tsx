@@ -660,15 +660,47 @@ function SkillCard({
 }
 
 function ArchitectureSection({ projects, onProjectClick, contactForm, scrollerRef }: any) {
-  const introRef   = useRef<HTMLDivElement>(null);
-
-  const [progress,    setProgress]    = useState(0);
-  const [textVisible, setTextVisible] = useState(false);
-  // scrollUnlocked becomes true 1.8 s after textVisible — that's when all
-  // three lines + sub-paragraph have finished animating
-  const [scrollUnlocked, setScrollUnlocked] = useState(false);
+  const introRef = useRef<HTMLDivElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
+
+  const [progress, setProgress] = useState(0);
+  const [textVisible, setTextVisible] = useState(false);
+  // scrollUnlocked becomes true after the desktop scroll-merge finishes
+  const [scrollUnlocked, setScrollUnlocked] = useState(false);
+
+  // ── Mobile detection: render a clean stacked layout on phones ──
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
+  // panoAspect = the WIDTH/HEIGHT ratio of the whole panorama area.
+  // Because each half is exactly w-1/2, the area aspect is (2 * halfW) / halfH.
+  // Giving the area this exact ratio means object-cover never zooms/crops the
+  // halves on mobile — they fit perfectly and join into one horizontal image.
+  const [panoAspect, setPanoAspect] = useState(0);
+
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // Measure the real dimensions of one half so the mobile area matches it.
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      if (img.naturalWidth && img.naturalHeight) {
+        setPanoAspect((2 * img.naturalWidth) / img.naturalHeight);
+      }
+    };
+    img.src = bg1Image;
+  }, []);
+
+  // ── Desktop-only scroll-driven merge animation ──
+  useEffect(() => {
+    if (isMobile) return;
     const el = introRef.current;
     const scroller = scrollerRef?.current;
     if (!el || !scroller) return;
@@ -676,7 +708,7 @@ function ArchitectureSection({ projects, onProjectClick, contactForm, scrollerRe
     const handleScroll = () => {
       const scrollable = el.offsetHeight - scroller.clientHeight;
       if (scrollable <= 0) return;
-      const raw   = Math.max(0, Math.min(1, scroller.scrollTop / scrollable));
+      const raw = Math.max(0, Math.min(1, scroller.scrollTop / scrollable));
       const eased = 1 - Math.pow(1 - raw, 3);
       setProgress(eased);
 
@@ -688,225 +720,130 @@ function ArchitectureSection({ projects, onProjectClick, contactForm, scrollerRe
     scroller.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => scroller.removeEventListener("scroll", handleScroll);
-  }, [scrollUnlocked, scrollerRef]);
+  }, [isMobile, scrollUnlocked, scrollerRef]);
 
-  // ── FIX: fade out → collapse layout → fade back in, no blink ──
-    useEffect(() => {
-  if (!textVisible) return;
-  const scroller = scrollerRef?.current;
-  const sticky = stickyRef?.current;
-  if (!scroller || !sticky) return;
+  // Desktop: fade out → collapse layout → fade back in, no blink
+  useEffect(() => {
+    if (isMobile) return;
+    if (!textVisible) return;
+    const scroller = scrollerRef?.current;
+    const sticky = stickyRef?.current;
+    if (!scroller || !sticky) return;
 
-  const prev = scroller.style.overflowY;
-  scroller.style.overflowY = "hidden";
+    const prev = scroller.style.overflowY;
+    scroller.style.overflowY = "hidden";
 
-  const t = setTimeout(() => {
-    scroller.style.overflowY = prev || "auto";
-    setScrollUnlocked(true);
-  }, 2400);
+    const t = setTimeout(() => {
+      scroller.style.overflowY = prev || "auto";
+      setScrollUnlocked(true);
+    }, 2400);
 
-  return () => clearTimeout(t);
-  }, [textVisible, scrollerRef]);
+    return () => clearTimeout(t);
+  }, [isMobile, textVisible, scrollerRef]);
+
   const offset = progress * 100;
 
   return (
     <div className="w-full">
 
       {/* ══════════════════════════════════════════════════════════════════════
-          MOBILE LAYOUT — the sticky wrapper is a flex-column:
-            Row 1  (flex-1, min-h-0)   — IMAGE AREA  (bg0 + bg1 + bg2 + text)
-            Row 2  (flex-shrink-0)     — CARD STRIP  (4 feature cards, 2×2 grid)
-          The cards are OUTSIDE the image area so they never overlap it.
-          bg1 (left half) + bg2 (right half) always sit side-by-side and
-          together form one seamless panoramic photo — no overlap, no gap.
-
-          DESKTOP — same structure but card strip is hidden (md:hidden) and the
-          feature bar is rendered inside the image area pinned to the bottom.
+          MOBILE INTRO
+          • Panorama sits at the TOP at its TRUE aspect ratio — no stretch,
+            no crop. bg1 (left half) + bg2 (right half) slide in to meet and
+            form one seamless horizontal image.
+          • Hero text OVERLAYS the image (like the screenshot), with a soft
+            gradient scrim so it stays readable.
+          • Feature cards follow below the image.
       ══════════════════════════════════════════════════════════════════════ */}
-      <div
-        ref={introRef}
-        style={{ height: "250vh" }}
-        className="relative"
-      >
-        {/* sticky wrapper: flex-col so image + cards stack on mobile */}
-        <div
-          ref={stickyRef}
-          className="sticky top-0 h-screen overflow-hidden flex flex-col"
-        >
+      {isMobile && (
+        <div className="w-full bg-black">
 
-          {/* ── ROW 1: IMAGE AREA ──────────────────────────────────────────── */}
-          <div className="relative flex-1 overflow-hidden min-h-0">
-
-            {/* LAYER 0 — base bg, visible before panels arrive */}
-            <img src={bgImage} alt=""
-              className="absolute inset-0 w-full h-full object-cover z-0" />
-
-            {/* LAYER 1 — bg1: occupies the LEFT half of the image area.
-                Starts 100% of the CONTAINER height above it, slides down.
-                objectPosition "right center" shows the right side of bg1.jpg
-                which is the seam that must align with bg2's left edge. */}
-            <div
-              className="absolute left-0 w-1/2 z-10 overflow-hidden"
-              style={{
-                top: "-100%",
-                height: "100%",
-                transform: `translateY(${offset}%)`,
-                willChange: "transform",
-              }}
-            >
-              <img
-                src={bg1Image} alt=""
-                className="w-full h-full object-cover"
-                style={{ objectPosition: "right center" }}
-              />
-            </div>
-
-            {/* LAYER 2 — bg2: occupies the RIGHT half of the image area.
-                Starts 100% of the CONTAINER height below it, slides up.
-                objectPosition "left center" shows the left side of bg2.jpg
-                which is the seam that must align with bg1's right edge. */}
-            <div
-              className="absolute right-0 w-1/2 z-10 overflow-hidden"
-              style={{
-                bottom: "-100%",
-                height: "100%",
-                transform: `translateY(${-offset}%)`,
-                willChange: "transform",
-              }}
-            >
-              <img
-                src={bg2Image} alt=""
-                className="w-full h-full object-cover"
-                style={{ objectPosition: "left center" }}
-              />
-            </div>
-
-            {/* LAYER 3 — hero text UI, floats over the image */}
-            <div className="absolute inset-0 z-20 flex flex-col">
-
-              {/* Social icons — desktop only */}
-              <div
-                className="hidden md:flex absolute left-5 top-1/2 -translate-y-1/2 flex-col gap-5"
-                style={{
-                  opacity: textVisible ? 1 : 0,
-                  transition: textVisible ? "opacity 0.6s ease 1.7s" : "none",
-                }}
-              >
-                {socialLinks.map(({ icon: Icon, href }, i) => (
-                  <a key={i} href={href}
-                    className="w-8 h-8 rounded-full border border-white/20 bg-white/5 flex items-center justify-center hover:bg-blue-500/30 hover:border-blue-400/50 transition-all">
-                    <Icon className="w-3.5 h-3.5 text-white/70" />
-                  </a>
-                ))}
-              </div>
-
-              {/* Main text — centred vertically in image area */}
-              <div className="flex-1 flex items-center pl-4 md:pl-24 pr-4 md:pr-8 pt-16">
-                <div className="w-full">
-
-                  {/* Badge */}
-                  <div
-                    style={{
-                      opacity: textVisible ? 1 : 0,
-                      transform: textVisible ? "translateY(0)" : "translateY(12px)",
-                      transition: textVisible ? "opacity 0.5s ease 0s, transform 0.5s ease 0s" : "none",
-                    }}
-                    className="inline-flex items-center gap-2 mb-2 md:mb-6"
-                  >
-                    <span className="w-1 h-4 md:h-6 bg-blue-800 rounded-full" />
-                    <span className="text-white/80 font-mono text-[9px] md:text-sm tracking-widest uppercase">
-                      We Design. You Dream. We Build.
-                    </span>
-                  </div>
-
-                  {/* Heading — clamp keeps it on one line on any mobile width */}
-                  <div className="mb-2 md:mb-6 space-y-0">
-                    <AnimLine visible={textVisible} delay={0}>Designing Structures.</AnimLine>
-                    <AnimLine visible={textVisible} delay={0.2}>Creating Spaces.</AnimLine>
-                    <GlowLine visible={textVisible} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Right arrow — desktop only */}
-              <div
-                className="hidden md:block absolute right-8 top-1/2 -translate-y-1/2"
-                style={{
-                  opacity: textVisible ? 1 : 0,
-                  transition: textVisible ? "opacity 0.6s ease 1.7s" : "none",
-                }}
-              >
-                <button className="w-12 h-12 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm flex items-center justify-center hover:bg-white/15 transition-all">
-                  <ChevronRight className="w-5 h-5 text-white/70" />
-                </button>
-              </div>
-
-              {/* Feature bar — DESKTOP only, pinned to bottom of image area */}
-              <div
-                className="hidden md:flex items-stretch border-t border-white/10 bg-black/40 backdrop-blur-md"
-                style={{
-                  opacity: textVisible ? 1 : 0,
-                  transform: textVisible ? "translateY(0)" : "translateY(20px)",
-                  transition: textVisible
-                    ? "opacity 0.7s ease 1.6s, transform 0.7s ease 1.6s"
-                    : "none",
-                }}
-              >
-                {archFeatures.map((f, i) => {
-                  const Icon = f.icon;
-                  return (
-                    <div key={f.title}
-                      className={`flex items-center gap-4 flex-1 px-5 py-4 ${i < archFeatures.length - 1 ? "border-r border-white/10" : ""}`}>
-                      <div className="w-10 h-10 rounded-full border border-blue-400/30 bg-blue-400/10 flex items-center justify-center flex-shrink-0">
-                        <Icon className="w-4 h-4 text-blue-400" />
-                      </div>
-                      <div>
-                        <p className="text-white font-bold text-sm">{f.title}</p>
-                        <p className="text-white/45 text-xs leading-snug mt-0.5">{f.desc}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-                <div className="flex items-center gap-3 px-5 border-l border-white/10 flex-shrink-0">
-                  <div className="w-7 h-10 rounded-full border border-white/30 flex flex-col items-center justify-start pt-1.5 gap-1">
-                    <div className="w-1 h-2 rounded-full bg-white/60 animate-bounce" />
-                  </div>
-                  <div className="text-white/50 text-[10px] leading-tight">
-                    <p className="font-semibold">Scroll Down</p>
-                    <p>to Explore</p>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-            {/* end LAYER 3 */}
-
-            {/* Scroll cue — visible only before merge */}
-            <div
-              className="absolute bottom-4 md:bottom-24 inset-x-0 flex justify-center z-30 pointer-events-none"
-              style={{ opacity: Math.max(0, 1 - progress * 6) }}
-            >
-              <div className="flex flex-col items-center gap-2 text-white/50 text-xs tracking-widest uppercase">
-                <span>Scroll</span>
-                <svg width="16" height="24" viewBox="0 0 16 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="animate-bounce">
-                  <path d="M8 0v20M1 13l7 7 7-7" />
-                </svg>
-              </div>
-            </div>
-
-          </div>
-          {/* end IMAGE AREA */}
-
-          {/* ── ROW 2: MOBILE CARD STRIP ───────────────────────────────────
-              flex-shrink-0 → takes its natural height; image area fills rest.
-              Rendered BELOW the image, never over it.
-              Hidden on md+ (desktop uses the feature bar inside the image).
-          ──────────────────────────────────────────────────────────────── */}
+          {/* Panorama — aspect-ratio keeps the image its natural shape */}
           <div
-            className="md:hidden flex-shrink-0 bg-black/95 border-t border-white/10"
+            className="relative w-full overflow-hidden"
+            style={{ aspectRatio: panoAspect || 2.4 }}
+          >
+            {/* base bg, visible behind the halves while they slide in */}
+            <img
+              src={bgImage}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover z-0"
+            />
+
+            {/* LEFT half — slides down from above */}
+            <motion.div
+              className="absolute left-0 top-0 w-1/2 h-full overflow-hidden z-10"
+              initial={{ y: "-100%" }}
+              animate={{ y: "0%" }}
+              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+              onAnimationComplete={() => setTextVisible(true)}
+            >
+              <img
+                src={bg1Image}
+                alt=""
+                className="w-full h-full object-cover"
+                style={{ objectPosition: "center" }}
+              />
+            </motion.div>
+
+            {/* RIGHT half — slides up from below */}
+            <motion.div
+              className="absolute right-0 top-0 w-1/2 h-full overflow-hidden z-10"
+              initial={{ y: "100%" }}
+              animate={{ y: "0%" }}
+              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <img
+                src={bg2Image}
+                alt=""
+                className="w-full h-full object-cover"
+                style={{ objectPosition: "center" }}
+              />
+            </motion.div>
+
+            {/* Readability scrim — darkens the left/bottom where the text sits */}
+            <div
+              className="absolute inset-0 z-20 pointer-events-none"
+              style={{
+                background:
+                  "linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 45%, rgba(0,0,0,0) 75%)",
+              }}
+            />
+
+            {/* Hero text — OVERLAID on the image */}
+            <div className="absolute inset-0 z-30 flex items-center px-4 pt-10">
+              <div className="w-full">
+                <div
+                  style={{
+                    opacity: textVisible ? 1 : 0,
+                    transform: textVisible ? "translateY(0)" : "translateY(12px)",
+                    transition: textVisible
+                      ? "opacity 0.5s ease, transform 0.5s ease"
+                      : "none",
+                  }}
+                  className="inline-flex items-center gap-2 mb-2"
+                >
+                  <span className="w-1 h-4 bg-blue-800 rounded-full" />
+                  <span className="text-white/80 font-mono text-[9px] tracking-widest uppercase">
+                    We Design. You Dream. We Build.
+                  </span>
+                </div>
+
+                <div className="space-y-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+                  <AnimLine visible={textVisible} delay={0}>Designing Structures.</AnimLine>
+                  <AnimLine visible={textVisible} delay={0.2}>Creating Spaces.</AnimLine>
+                  <GlowLine visible={textVisible} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature cards — follow below the image */}
+          <div
+            className="bg-black/95 border-t border-white/10"
             style={{
               opacity: textVisible ? 1 : 0,
-              transition: textVisible ? "opacity 0.7s ease 1.6s" : "none",
+              transition: textVisible ? "opacity 0.7s ease 0.3s" : "none",
             }}
           >
             <div className="grid grid-cols-2">
@@ -932,10 +869,181 @@ function ArchitectureSection({ projects, onProjectClick, contactForm, scrollerRe
               })}
             </div>
           </div>
-
         </div>
-      </div>
-      {/* ══════════════════════════════ END ANIMATED INTRO ══════════════════ */}
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          DESKTOP INTRO — original scroll-driven merge (unchanged)
+      ══════════════════════════════════════════════════════════════════════ */}
+      {!isMobile && (
+        <div
+          ref={introRef}
+          style={{ height: "250vh" }}
+          className="relative"
+        >
+          {/* sticky wrapper */}
+          <div
+            ref={stickyRef}
+            className="sticky top-0 h-screen overflow-hidden flex flex-col"
+          >
+
+            {/* ── IMAGE AREA ── */}
+            <div className="relative flex-1 overflow-hidden min-h-0">
+
+              {/* LAYER 0 — base bg */}
+              <img src={bgImage} alt=""
+                className="absolute inset-0 w-full h-full object-cover z-0" />
+
+              {/* LAYER 1 — bg1: LEFT half, slides down */}
+              <div
+                className="absolute left-0 w-1/2 z-10 overflow-hidden"
+                style={{
+                  top: "-100%",
+                  height: "100%",
+                  transform: `translateY(${offset}%)`,
+                  willChange: "transform",
+                }}
+              >
+                <img
+                  src={bg1Image} alt=""
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: "right center" }}
+                />
+              </div>
+
+              {/* LAYER 2 — bg2: RIGHT half, slides up */}
+              <div
+                className="absolute right-0 w-1/2 z-10 overflow-hidden"
+                style={{
+                  bottom: "-100%",
+                  height: "100%",
+                  transform: `translateY(${-offset}%)`,
+                  willChange: "transform",
+                }}
+              >
+                <img
+                  src={bg2Image} alt=""
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: "left center" }}
+                />
+              </div>
+
+              {/* LAYER 3 — hero text UI */}
+              <div className="absolute inset-0 z-20 flex flex-col">
+
+                {/* Social icons */}
+                <div
+                  className="flex absolute left-5 top-1/2 -translate-y-1/2 flex-col gap-5"
+                  style={{
+                    opacity: textVisible ? 1 : 0,
+                    transition: textVisible ? "opacity 0.6s ease 1.7s" : "none",
+                  }}
+                >
+                  {socialLinks.map(({ icon: Icon, href }, i) => (
+                    <a key={i} href={href}
+                      className="w-8 h-8 rounded-full border border-white/20 bg-white/5 flex items-center justify-center hover:bg-blue-500/30 hover:border-blue-400/50 transition-all">
+                      <Icon className="w-3.5 h-3.5 text-white/70" />
+                    </a>
+                  ))}
+                </div>
+
+                {/* Main text */}
+                <div className="flex-1 flex items-center pl-24 pr-8 pt-16">
+                  <div className="w-full">
+                    <div
+                      style={{
+                        opacity: textVisible ? 1 : 0,
+                        transform: textVisible ? "translateY(0)" : "translateY(12px)",
+                        transition: textVisible ? "opacity 0.5s ease 0s, transform 0.5s ease 0s" : "none",
+                      }}
+                      className="inline-flex items-center gap-2 mb-6"
+                    >
+                      <span className="w-1 h-6 bg-blue-800 rounded-full" />
+                      <span className="text-white/80 font-mono text-sm tracking-widest uppercase">
+                        We Design. You Dream. We Build.
+                      </span>
+                    </div>
+
+                    <div className="mb-6 space-y-0">
+                      <AnimLine visible={textVisible} delay={0}>Designing Structures.</AnimLine>
+                      <AnimLine visible={textVisible} delay={0.2}>Creating Spaces.</AnimLine>
+                      <GlowLine visible={textVisible} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right arrow */}
+                <div
+                  className="block absolute right-8 top-1/2 -translate-y-1/2"
+                  style={{
+                    opacity: textVisible ? 1 : 0,
+                    transition: textVisible ? "opacity 0.6s ease 1.7s" : "none",
+                  }}
+                >
+                  <button className="w-12 h-12 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm flex items-center justify-center hover:bg-white/15 transition-all">
+                    <ChevronRight className="w-5 h-5 text-white/70" />
+                  </button>
+                </div>
+
+                {/* Feature bar pinned to bottom */}
+                <div
+                  className="flex items-stretch border-t border-white/10 bg-black/40 backdrop-blur-md"
+                  style={{
+                    opacity: textVisible ? 1 : 0,
+                    transform: textVisible ? "translateY(0)" : "translateY(20px)",
+                    transition: textVisible
+                      ? "opacity 0.7s ease 1.6s, transform 0.7s ease 1.6s"
+                      : "none",
+                  }}
+                >
+                  {archFeatures.map((f, i) => {
+                    const Icon = f.icon;
+                    return (
+                      <div key={f.title}
+                        className={`flex items-center gap-4 flex-1 px-5 py-4 ${i < archFeatures.length - 1 ? "border-r border-white/10" : ""}`}>
+                        <div className="w-10 h-10 rounded-full border border-blue-400/30 bg-blue-400/10 flex items-center justify-center flex-shrink-0">
+                          <Icon className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="text-white font-bold text-sm">{f.title}</p>
+                          <p className="text-white/45 text-xs leading-snug mt-0.5">{f.desc}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex items-center gap-3 px-5 border-l border-white/10 flex-shrink-0">
+                    <div className="w-7 h-10 rounded-full border border-white/30 flex flex-col items-center justify-start pt-1.5 gap-1">
+                      <div className="w-1 h-2 rounded-full bg-white/60 animate-bounce" />
+                    </div>
+                    <div className="text-white/50 text-[10px] leading-tight">
+                      <p className="font-semibold">Scroll Down</p>
+                      <p>to Explore</p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+              {/* end LAYER 3 */}
+
+              {/* Scroll cue */}
+              <div
+                className="absolute bottom-24 inset-x-0 flex justify-center z-30 pointer-events-none"
+                style={{ opacity: Math.max(0, 1 - progress * 6) }}
+              >
+                <div className="flex flex-col items-center gap-2 text-white/50 text-xs tracking-widest uppercase">
+                  <span>Scroll</span>
+                  <svg width="16" height="24" viewBox="0 0 16 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="animate-bounce">
+                    <path d="M8 0v20M1 13l7 7 7-7" />
+                  </svg>
+                </div>
+              </div>
+
+            </div>
+            {/* end IMAGE AREA */}
+
+          </div>
+        </div>
+      )}
       {/* ══════════════════════════════ END ANIMATED INTRO ══════════════════ */}
 
       {/* ── Featured Work ──────────────────────────────────────────────────── */}
@@ -974,122 +1082,121 @@ function ArchitectureSection({ projects, onProjectClick, contactForm, scrollerRe
         </div>
       </section>
 
-      {/* ── About ──────────────────────────────────────────────────────────── */}
-        {/* ── About ──────────────────────────────────────────────────────────────── */}
-        <section className="relative z-10 bg-gradient-to-b from-[#0a192f] to-black min-h-screen flex items-center py-24 overflow-hidden">
+      {/* ── About ──────────────────────────────────────────────────────────────── */}
+      <section className="relative z-10 bg-gradient-to-b from-[#0a192f] to-black min-h-screen flex items-center py-24 overflow-hidden">
 
-          {/* Large background text */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
-            <span className="text-[clamp(80px,18vw,220px)] font-black text-white/[0.03] tracking-widest uppercase leading-none blur-[2px]">
-              ARCHITECT
-            </span>
-          </div>
+        {/* Large background text */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
+          <span className="text-[clamp(80px,18vw,220px)] font-black text-white/[0.03] tracking-widest uppercase leading-none blur-[2px]">
+            ARCHITECT
+          </span>
+        </div>
 
-          {/* Blueprint grid overlay */}
-          <div className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage: `
-                linear-gradient(rgba(96,165,250,0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(96,165,250,0.04) 1px, transparent 1px)
-              `,
-              backgroundSize: "60px 60px",
-            }}
-          />
+        {/* Blueprint grid overlay */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(96,165,250,0.04) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(96,165,250,0.04) 1px, transparent 1px)
+            `,
+            backgroundSize: "60px 60px",
+          }}
+        />
 
-          {/* Radial blue glow top-left */}
-          <div className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full pointer-events-none"
-            style={{ background: "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)" }}
-          />
-          {/* Radial glow bottom-right */}
-          <div className="absolute -bottom-32 -right-32 w-[500px] h-[500px] rounded-full pointer-events-none"
-            style={{ background: "radial-gradient(circle, rgba(96,165,250,0.05) 0%, transparent 70%)" }}
-          />
+        {/* Radial blue glow top-left */}
+        <div className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)" }}
+        />
+        {/* Radial glow bottom-right */}
+        <div className="absolute -bottom-32 -right-32 w-[500px] h-[500px] rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(circle, rgba(96,165,250,0.05) 0%, transparent 70%)" }}
+        />
 
-          <div className="relative z-10 w-full px-8 md:px-16 max-w-7xl mx-auto">
+        <div className="relative z-10 w-full px-8 md:px-16 max-w-7xl mx-auto">
 
-            {/* ── Top row: text + stats ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start mb-20">
+          {/* ── Top row: text + stats ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start mb-20">
 
-              {/* Left: text */}
-              <motion.div
-                initial={{ opacity: 0, x: -40 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8 }}
-              >
-                <div className="flex items-center gap-3 mb-6">
-                  <span className="w-8 h-px bg-blue-400" />
-                  <span className="text-blue-400 font-mono text-xs tracking-widest uppercase">About My Work</span>
-                </div>
-
-                <h2 className="text-4xl md:text-5xl font-bold mb-8 text-glow-arch leading-tight">
-                  Crafting Spaces<br />That Inspire
-                </h2>
-
-                <p className="text-lg text-white/60 mb-5 leading-relaxed max-w-lg">
-                  With six years of self-taught architectural design experience, I specialize in creating{" "}
-                  <span className="text-blue-400 font-semibold">sustainable, functional spaces</span>{" "}
-                  that blend traditional craftsmanship with modern innovation.
-                </p>
-                <p className="text-lg text-white/60 leading-relaxed max-w-lg">
-                  I leverage industry-leading tools like{" "}
-                  <span className="text-blue-300 font-semibold">AutoCAD, Revit, and SketchUp</span>{" "}
-                  to transform concepts into stunning visual realities.
-                </p>
-              </motion.div>
-
-              {/* Right: stat cards */}
-              <motion.div
-                initial={{ opacity: 0, x: 40 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="grid grid-cols-3 gap-4"
-              >
-                {[
-                  { icon: Award, value: "120+", label: "Projects" },
-                  { icon: Clock, value: "6", label: "Years Exp." },
-                  { icon: Users2, value: "40+", label: "Clients" },
-                ].map(({ icon: Icon, value, label }, i) => (
-                  <motion.div
-                    key={label}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 + i * 0.1 }}
-                    whileHover={{ y: -4 }}
-                    className="relative rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-md p-5 text-center overflow-hidden group"
-                  >
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                      style={{ background: "radial-gradient(circle at 50% 0%, rgba(96,165,250,0.1) 0%, transparent 70%)" }}
-                    />
-                    <div className="w-9 h-9 rounded-xl border border-blue-400/25 bg-blue-400/10 flex items-center justify-center mx-auto mb-3">
-                      <Icon className="w-4 h-4 text-blue-400" />
-                    </div>
-                    <p className="text-3xl font-black text-white">{value}</p>
-                    <p className="text-white/40 text-xs mt-1 tracking-wide uppercase font-mono">{label}</p>
-                  </motion.div>
-                ))}
-              </motion.div>
-            </div>
-
-            {/* ── Skill glass cards ── */}
+            {/* Left: text */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
+              initial={{ opacity: 0, x: -40 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
             >
-              <div className="flex items-center gap-3 mb-8">
+              <div className="flex items-center gap-3 mb-6">
                 <span className="w-8 h-px bg-blue-400" />
-                <span className="text-blue-400 font-mono text-xs tracking-widest uppercase">Technical Skills</span>
+                <span className="text-blue-400 font-mono text-xs tracking-widest uppercase">About My Work</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <SkillCard icon={PenTool}   name="AutoCAD & Drafting"    percentage={95} delay={0.1} />
-                <SkillCard icon={Building2} name="Revit & BIM"           percentage={88} delay={0.2} />
-                <SkillCard icon={Box}       name="SketchUp & 3D Modeling" percentage={92} delay={0.3} />
-                <SkillCard icon={Lightbulb} name="Design Philosophy"     percentage={90} delay={0.4} />
-              </div>
+
+              <h2 className="text-4xl md:text-5xl font-bold mb-8 text-glow-arch leading-tight">
+                Crafting Spaces<br />That Inspire
+              </h2>
+
+              <p className="text-lg text-white/60 mb-5 leading-relaxed max-w-lg">
+                With six years of self-taught architectural design experience, I specialize in creating{" "}
+                <span className="text-blue-400 font-semibold">sustainable, functional spaces</span>{" "}
+                that blend traditional craftsmanship with modern innovation.
+              </p>
+              <p className="text-lg text-white/60 leading-relaxed max-w-lg">
+                I leverage industry-leading tools like{" "}
+                <span className="text-blue-300 font-semibold">AutoCAD, Revit, and SketchUp</span>{" "}
+                to transform concepts into stunning visual realities.
+              </p>
             </motion.div>
 
+            {/* Right: stat cards */}
+            <motion.div
+              initial={{ opacity: 0, x: 40 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="grid grid-cols-3 gap-4"
+            >
+              {[
+                { icon: Award, value: "120+", label: "Projects" },
+                { icon: Clock, value: "6", label: "Years Exp." },
+                { icon: Users2, value: "40+", label: "Clients" },
+              ].map(({ icon: Icon, value, label }, i) => (
+                <motion.div
+                  key={label}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + i * 0.1 }}
+                  whileHover={{ y: -4 }}
+                  className="relative rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-md p-5 text-center overflow-hidden group"
+                >
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                    style={{ background: "radial-gradient(circle at 50% 0%, rgba(96,165,250,0.1) 0%, transparent 70%)" }}
+                  />
+                  <div className="w-9 h-9 rounded-xl border border-blue-400/25 bg-blue-400/10 flex items-center justify-center mx-auto mb-3">
+                    <Icon className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <p className="text-3xl font-black text-white">{value}</p>
+                  <p className="text-white/40 text-xs mt-1 tracking-wide uppercase font-mono">{label}</p>
+                </motion.div>
+              ))}
+            </motion.div>
           </div>
-        </section>
+
+          {/* ── Skill glass cards ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="flex items-center gap-3 mb-8">
+              <span className="w-8 h-px bg-blue-400" />
+              <span className="text-blue-400 font-mono text-xs tracking-widest uppercase">Technical Skills</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <SkillCard icon={PenTool}   name="AutoCAD & Drafting"    percentage={95} delay={0.1} />
+              <SkillCard icon={Building2} name="Revit & BIM"           percentage={88} delay={0.2} />
+              <SkillCard icon={Box}       name="SketchUp & 3D Modeling" percentage={92} delay={0.3} />
+              <SkillCard icon={Lightbulb} name="Design Philosophy"     percentage={90} delay={0.4} />
+            </div>
+          </motion.div>
+
+        </div>
+      </section>
 
       {/* ── Projects ───────────────────────────────────────────────────────── */}
       <section className="relative z-10 bg-black min-h-screen flex items-center px-8 md:px-16 py-20 max-w-7xl mx-auto w-full">
@@ -1302,4 +1409,4 @@ function ContactSection({ contactForm, theme }: any) {
       </motion.div>
     </section>
   );
-  }
+}
