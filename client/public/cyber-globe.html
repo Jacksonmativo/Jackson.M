@@ -9,6 +9,14 @@
         body { margin: 0; overflow: hidden; background: #000008; width: 100vw; height: 100vh; }
         canvas { display: block; width: 100% !important; height: 100% !important; }
 
+        /* ── Soft radial glow behind everything ── */
+        .bg-glow {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background:
+                radial-gradient(circle at 50% 48%, rgba(0,120,255,0.10) 0%, transparent 45%),
+                radial-gradient(circle at 50% 52%, rgba(196,18,48,0.06) 0%, transparent 40%);
+        }
+
         /* ── Name Overlay Behind Globe ── */
         .globe-name-overlay {
             position: fixed;
@@ -24,10 +32,36 @@
             text-align: center;
             color: rgba(0, 229, 255, 0.08);
             text-shadow:
-                0 0 40px rgba(0, 229, 255, 0.1),
+                0 0 40px rgba(0, 229, 255, 0.10),
                 0 0 80px rgba(255, 61, 107, 0.05);
             line-height: 1.2;
             font-weight: bold;
+            animation: nameFlicker 6s ease-in-out infinite;
+        }
+        @keyframes nameFlicker {
+            0%, 100% { opacity: 1; }
+            48% { opacity: 1; }
+            50% { opacity: 0.55; }
+            52% { opacity: 1; }
+            70% { opacity: 0.9; }
+        }
+
+        /* ── Vignette + faint scanlines ── */
+        .fx-overlay {
+            position: fixed; inset: 0; z-index: 5; pointer-events: none;
+            background:
+                radial-gradient(circle at 50% 50%, transparent 55%, rgba(0,0,8,0.55) 100%);
+        }
+        .fx-overlay::after {
+            content: ""; position: absolute; inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(255,255,255,0.018) 0px,
+                rgba(255,255,255,0.018) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            mix-blend-mode: overlay;
         }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,9 +69,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="globe-name-overlay">
-        Jackson Mativo
-    </div>
+    <div class="bg-glow"></div>
+    <div class="globe-name-overlay">Jackson Mativo</div>
+    <div class="fx-overlay"></div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         // ── Helpers ───────────────────────────────────────────────────────────
@@ -83,28 +118,76 @@
         scene.add(globeGroup);
         setCameraPosition(getCamDistance());
 
+        // Land-dot handles for the hover wobble (filled once the texture loads)
+        let landDots = null;
+        let landBasePositions = null;
+
+        // ── NEW: dark occluder core so the far side of the globe is hidden ─────
+        const core = new THREE.Mesh(
+            new THREE.SphereGeometry(0.985, 48, 48),
+            new THREE.MeshBasicMaterial({ color: 0x01030c })
+        );
+        globeGroup.add(core);
+
+        // ── NEW: atmospheric fresnel glow (back-side shader, additive) ─────────
+        const atmosphere = new THREE.Mesh(
+            new THREE.SphereGeometry(1.0, 64, 64),
+            new THREE.ShaderMaterial({
+                uniforms: {
+                    glowColor: { value: new THREE.Color(0x1f7bff) },
+                    rim:       { value: 0.62 },
+                    power:     { value: 3.4 }
+                },
+                vertexShader: `
+                    varying vec3 vNormal;
+                    varying vec3 vView;
+                    void main() {
+                        vNormal = normalize(normalMatrix * normal);
+                        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+                        vView = normalize(-mv.xyz);
+                        gl_Position = projectionMatrix * mv;
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 glowColor;
+                    uniform float rim;
+                    uniform float power;
+                    varying vec3 vNormal;
+                    varying vec3 vView;
+                    void main() {
+                        float intensity = pow(rim - dot(vNormal, vView), power);
+                        gl_FragColor = vec4(glowColor, 1.0) * intensity;
+                    }
+                `,
+                side: THREE.BackSide,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                depthWrite: false
+            })
+        );
+        atmosphere.scale.setScalar(1.22);
+        scene.add(atmosphere); // in scene (not group) so the glow stays view-aligned
+
+        // ── NEW: rotating radar scan ring ─────────────────────────────────────
+        const scanRing = new THREE.Mesh(
+            new THREE.TorusGeometry(1.02, 0.006, 8, 120),
+            new THREE.MeshBasicMaterial({
+                color: 0x33e1ff, transparent: true, opacity: 0.5,
+                blending: THREE.AdditiveBlending, depthWrite: false
+            })
+        );
+        scanRing.rotation.x = Math.PI / 2;
+        globeGroup.add(scanRing);
+
         // ── Cities ────────────────────────────────────────────────────────────
         const cities = [
-            { lon: -74,   lat:  40.7 }, // 0  New York
-            { lon:  -0.1, lat:  51.5 }, // 1  London
-            { lon:   2.3, lat:  48.9 }, // 2  Paris
-            { lon:  13.4, lat:  52.5 }, // 3  Berlin
-            { lon:  37.6, lat:  55.8 }, // 4  Moscow
-            { lon:  55.3, lat:  25.2 }, // 5  Dubai
-            { lon:  72.9, lat:  19.1 }, // 6  Mumbai
-            { lon:  77.2, lat:  28.6 }, // 7  Delhi
-            { lon: 103.8, lat:   1.3 }, // 8  Singapore
-            { lon: 116.4, lat:  39.9 }, // 9  Beijing
-            { lon: 139.7, lat:  35.7 }, // 10 Tokyo
-            { lon: 151.2, lat: -33.9 }, // 11 Sydney
-            { lon: -43.2, lat: -22.9 }, // 12 Rio
-            { lon: -99.1, lat:  19.4 }, // 13 Mexico City
-            { lon: -87.6, lat:  41.9 }, // 14 Chicago
-            { lon:-122.4, lat:  37.8 }, // 15 San Francisco
-            { lon:  18.4, lat: -33.9 }, // 16 Cape Town
-            { lon:  28.0, lat: -26.2 }, // 17 Johannesburg
-            { lon:   3.4, lat:   6.5 }, // 18 Lagos
-            { lon:  36.8, lat:  -1.3 }, // 19 Nairobi
+            { lon: -74,   lat:  40.7 }, { lon:  -0.1, lat:  51.5 }, { lon:   2.3, lat:  48.9 },
+            { lon:  13.4, lat:  52.5 }, { lon:  37.6, lat:  55.8 }, { lon:  55.3, lat:  25.2 },
+            { lon:  72.9, lat:  19.1 }, { lon:  77.2, lat:  28.6 }, { lon: 103.8, lat:   1.3 },
+            { lon: 116.4, lat:  39.9 }, { lon: 139.7, lat:  35.7 }, { lon: 151.2, lat: -33.9 },
+            { lon: -43.2, lat: -22.9 }, { lon: -99.1, lat:  19.4 }, { lon: -87.6, lat:  41.9 },
+            { lon:-122.4, lat:  37.8 }, { lon:  18.4, lat: -33.9 }, { lon:  28.0, lat: -26.2 },
+            { lon:   3.4, lat:   6.5 }, { lon:  36.8, lat:  -1.3 }
         ];
 
         const connectionPairs = [
@@ -115,10 +198,12 @@
             [19,6],[18,5],[3,5],[2,5],[4,6],[9,6],[10,8]
         ];
 
-        const storedArcs   = [];
+        const storedArcs    = [];
         const activePackets = [];
         const activeSparks  = [];
-        const MAX_PACKETS   = 12;
+        const activeWaves   = [];   // NEW: arrival shockwave rings
+        const MAX_PACKETS   = 14;
+        const TRAIL_LEN     = 16;
 
         // ── Binary sprite factory ─────────────────────────────────────────────
         function makeBinarySprite() {
@@ -127,16 +212,18 @@
             cnv.width = cw; cnv.height = ch;
             const ctx = cnv.getContext('2d');
 
-            function draw(color) {
+            function draw(color, glow) {
                 ctx.clearRect(0, 0, cw, ch);
                 ctx.font = 'bold 35px monospace';
                 ctx.fillStyle = color;
+                ctx.shadowColor = glow || color;
+                ctx.shadowBlur = 8;
                 ctx.textAlign    = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(randomBits(), cw / 2, ch / 2);
             }
 
-            draw('#88ccff');
+            draw('#9fe3ff', '#33e1ff');
             const tex = new THREE.CanvasTexture(cnv);
             const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
             const spr = new THREE.Sprite(mat);
@@ -146,27 +233,61 @@
             return { spr, cnv, ctx, tex, draw };
         }
 
-        // ── Spawn a traveling packet ──────────────────────────────────────────
+        // ── Spawn a traveling packet (with comet trail) ───────────────────────
         function spawnPacket() {
             if (storedArcs.length === 0 || activePackets.length >= MAX_PACKETS) return;
             const arc = storedArcs[Math.floor(Math.random() * storedArcs.length)];
             const { spr, cnv, ctx, tex, draw } = makeBinarySprite();
-            spr.position.copy(arc.curve.getPoint(0));
+            const start = arc.curve.getPoint(0);
+            spr.position.copy(start);
             globeGroup.add(spr);
 
-            // Journey: 3 – 5 seconds  →  speed = 1 / journeyMs
+            // Comet trail (additive line, vertex colours fade head→tail)
+            const trailPos = new Float32Array(TRAIL_LEN * 3);
+            const trailCol = new Float32Array(TRAIL_LEN * 3);
+            for (let k = 0; k < TRAIL_LEN; k++) {
+                trailPos[k*3] = start.x; trailPos[k*3+1] = start.y; trailPos[k*3+2] = start.z;
+            }
+            const trailGeo = new THREE.BufferGeometry();
+            trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+            trailGeo.setAttribute('color',    new THREE.BufferAttribute(trailCol, 3));
+            const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({
+                vertexColors: true, transparent: true,
+                blending: THREE.AdditiveBlending, depthWrite: false
+            }));
+            globeGroup.add(trail);
+
             const journeyMs = 3000 + Math.random() * 2000;
             activePackets.push({
                 spr, cnv, ctx, tex, draw,
-                curve:      arc.curve,
-                t:          0,
-                speed:      1 / journeyMs,   // t-units per ms
-                isMaroon:   false,
-                nextFlip:   performance.now() + 150 + Math.random() * 100
+                trail, trailPos, trailCol,
+                curve:    arc.curve,
+                t:        0,
+                speed:    1 / journeyMs,
+                isMaroon: false,
+                nextFlip: performance.now() + 150 + Math.random() * 100
             });
         }
 
-        // ── Maroon spark burst ────────────────────────────────────────────────
+        function updateTrailColors(pk) {
+            const base = pk.isMaroon ? [1.0, 0.12, 0.22] : [0.28, 0.85, 1.0];
+            for (let k = 0; k < TRAIL_LEN; k++) {
+                const f  = 1 - k / TRAIL_LEN;
+                const ff = f * f;
+                pk.trailCol[k*3]   = base[0] * ff;
+                pk.trailCol[k*3+1] = base[1] * ff;
+                pk.trailCol[k*3+2] = base[2] * ff;
+            }
+            pk.trail.geometry.attributes.color.needsUpdate = true;
+        }
+
+        function disposePacketTrail(pk) {
+            globeGroup.remove(pk.trail);
+            pk.trail.geometry.dispose();
+            pk.trail.material.dispose();
+        }
+
+        // ── Maroon spark burst + shockwave ────────────────────────────────────
         function createSparks(position) {
             const count = isMobile() ? 14 : 22;
             const posArr = new Float32Array(count * 3);
@@ -187,19 +308,30 @@
             geo.setAttribute('position', new THREE.Float32BufferAttribute(posArr, 3));
             const pts = new THREE.Points(geo, new THREE.PointsMaterial({
                 color: 0xC41230, size: isMobile() ? 0.052 : 0.040,
-                transparent: true, opacity: 1
+                transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false
             }));
             globeGroup.add(pts);
 
-            // Central flash sphere
             const flash = new THREE.Mesh(
                 new THREE.SphereGeometry(0.06, 8, 8),
-                new THREE.MeshBasicMaterial({ color: 0xff1a3a, transparent: true, opacity: 0.9 })
+                new THREE.MeshBasicMaterial({ color: 0xff1a3a, transparent: true, opacity: 0.9,
+                    blending: THREE.AdditiveBlending, depthWrite: false })
             );
             flash.position.copy(position);
             globeGroup.add(flash);
 
             activeSparks.push({ pts, flash, vels, age: 0, maxAge: 700 });
+
+            // NEW: expanding shockwave ring, oriented tangent to the surface
+            const wave = new THREE.Mesh(
+                new THREE.RingGeometry(0.02, 0.05, 28),
+                new THREE.MeshBasicMaterial({ color: 0xff3355, transparent: true, opacity: 0.8,
+                    side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })
+            );
+            wave.position.copy(position);
+            wave.lookAt(position.clone().multiplyScalar(2)); // face outward from globe centre
+            globeGroup.add(wave);
+            activeWaves.push({ wave, age: 0, maxAge: 650 });
         }
 
         // ── Land-mass dots ────────────────────────────────────────────────────
@@ -238,7 +370,6 @@
                             const br = 0.5 + 0.5 * Math.random();
                             colors.push(br * 0.2, br * 0.6, br);
                             dotCount += 1;
-
                             if (dotCount >= maxDots) break outer;
                         }
                     }
@@ -246,10 +377,13 @@
 
                 dotGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
                 dotGeometry.setAttribute('color',    new THREE.Float32BufferAttribute(colors, 3));
-                globeGroup.add(new THREE.Points(dotGeometry, new THREE.PointsMaterial({
+                landDots = new THREE.Points(dotGeometry, new THREE.PointsMaterial({
                     size: isMobile() ? 0.013 : 0.010,
-                    vertexColors: true, transparent: true, opacity: 0.85, alphaTest: 0.3
-                })));
+                    vertexColors: true, transparent: true, opacity: 0.9, alphaTest: 0.3
+                }));
+                globeGroup.add(landDots);
+                // keep a pristine copy of every dot position for the hover wobble
+                landBasePositions = Float32Array.from(positions);
 
                 // City nodes
                 cities.forEach(c => {
@@ -292,7 +426,6 @@
                     globeGroup.add(line);
                 });
 
-                // Stagger-launch 8 packets
                 for (let i = 0; i < MAX_PACKETS; i++) {
                     setTimeout(spawnPacket, i * 400 + Math.random() * 200);
                 }
@@ -301,18 +434,77 @@
             err => console.error('Texture failed:', err)
         );
 
-        // ── Lights & stars ────────────────────────────────────────────────────
+        // ── Lights & stars (two twinkling layers) ─────────────────────────────
         scene.add(new THREE.AmbientLight(0x112244, 2));
         const pl = new THREE.PointLight(0x2266ff, 1.5, 100);
         pl.position.set(5, 4, 5); scene.add(pl);
 
-        const sGeo = new THREE.BufferGeometry();
-        const sPos = new Float32Array(1800 * 3);
-        for (let i = 0; i < sPos.length; i += 3) {
-            sPos[i] = (Math.random()-.5)*240; sPos[i+1] = (Math.random()-.5)*240; sPos[i+2] = (Math.random()-.5)*240;
+        function makeStarLayer(count, spread, size, color, opacity) {
+            const g = new THREE.BufferGeometry();
+            const pos = new Float32Array(count * 3);
+            for (let i = 0; i < pos.length; i += 3) {
+                pos[i]   = (Math.random()-.5)*spread;
+                pos[i+1] = (Math.random()-.5)*spread;
+                pos[i+2] = (Math.random()-.5)*spread;
+            }
+            g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            const m = new THREE.PointsMaterial({ color, size, transparent: true, opacity });
+            const p = new THREE.Points(g, m);
+            scene.add(p);
+            return p;
         }
-        sGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
-        scene.add(new THREE.Points(sGeo, new THREE.PointsMaterial({ color: 0xaabbcc, size: 0.10, transparent: true, opacity: 0.7 })));
+        const starsNear = makeStarLayer(1400, 240, 0.12, 0xaabbcc, 0.75);
+        const starsFar  = makeStarLayer(900,  360, 0.07, 0x5577aa, 0.5);
+
+        // ── NEW: pointer interaction (drag + parallax, easing back to spin) ───
+        const AUTO_SPIN = 0.0042;        // base spin per 16ms
+        let spinVel = AUTO_SPIN;          // current Y spin velocity
+        let dragging = false;
+        let lastX = 0, lastY = 0;
+        let tiltX = 0, targetTiltX = 0;   // vertical tilt from drag/mouse
+        let pointerXNorm = 0;             // -1..1 for parallax
+
+        // ── NEW: hover state → gentle wobble ──────────────────────────────────
+        // hovering = pointer is actually over the globe sphere (raycast), not
+        // just anywhere on the canvas. wobbleAmp eases in/out for a soft feel.
+        let hovering = false;
+        let wobbleAmp = 0;
+        const raycaster = new THREE.Raycaster();
+        const pointerNDC = new THREE.Vector2(-2, -2); // off-screen by default
+
+        function updateHover(e) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(pointerNDC, camera);
+            // core is the solid occluder sphere — a reliable "is over globe" hit test
+            hovering = raycaster.intersectObject(core, false).length > 0;
+        }
+        renderer.domElement.addEventListener('pointermove', updateHover);
+        renderer.domElement.addEventListener('pointerleave', () => { hovering = false; });
+
+        const allowDrag = !isMobile();    // avoid hijacking scroll on touch
+        if (allowDrag) {
+            renderer.domElement.style.cursor = 'grab';
+            renderer.domElement.addEventListener('pointerdown', (e) => {
+                dragging = true; lastX = e.clientX; lastY = e.clientY;
+                renderer.domElement.style.cursor = 'grabbing';
+            });
+            window.addEventListener('pointerup', () => {
+                dragging = false; renderer.domElement.style.cursor = 'grab';
+            });
+            window.addEventListener('pointermove', (e) => {
+                pointerXNorm = (e.clientX / window.innerWidth) * 2 - 1;
+                if (!dragging) return;
+                const dx = e.clientX - lastX;
+                const dy = e.clientY - lastY;
+                lastX = e.clientX; lastY = e.clientY;
+                globeGroup.rotation.y += dx * 0.005;
+                spinVel = dx * 0.005;                 // hand off momentum
+                targetTiltX += dy * 0.005;
+                targetTiltX = Math.max(-0.6, Math.min(0.6, targetTiltX));
+            });
+        }
 
         // ── Animation loop ────────────────────────────────────────────────────
         let lastTime = performance.now();
@@ -322,8 +514,51 @@
             const now = performance.now();
             const dt  = Math.min(now - lastTime, 50);
             lastTime  = now;
+            const step = dt / 16;
 
-            globeGroup.rotation.y += 0.0042 * (dt / 16);
+            // Spin: drag momentum decays back toward steady auto-rotation
+            if (!dragging) {
+                spinVel += (AUTO_SPIN - spinVel) * 0.04;
+                globeGroup.rotation.y += spinVel * step;
+            }
+
+            // Subtle parallax tilt toward cursor, plus drag tilt easing
+            targetTiltX += (0 - targetTiltX) * 0.01;   // slowly relax drag tilt
+            tiltX += (targetTiltX + pointerXNorm * 0.04 - tiltX) * 0.06;
+            globeGroup.rotation.x = tiltX;
+
+            // ── Gentle continent-dot wobble on hover ───────────────────────────
+            // wobbleAmp eases 0→1 while hovering the globe, 1→0 when leaving.
+            wobbleAmp += ((hovering ? 1 : 0) - wobbleAmp) * 0.06;
+            if (landDots && landBasePositions) {
+                // Only touch the buffer while there's a wobble (or one final
+                // frame to settle dots exactly back to their base positions).
+                if (wobbleAmp > 0.001 || landDots.userData.wasWobbling) {
+                    const arr = landDots.geometry.attributes.position.array;
+                    const base = landBasePositions;
+                    const tt = now * 0.004;
+                    const amp = 0.022 * wobbleAmp;     // gentle radial sway
+                    for (let i = 0; i < base.length; i += 3) {
+                        const bx = base[i], by = base[i+1], bz = base[i+2];
+                        // each dot wobbles on its own phase (seeded by position)
+                        const w = Math.sin(tt + bx * 9.0 + by * 7.0 + bz * 5.0);
+                        const s = 1 + w * amp;          // scale along the radius
+                        arr[i]   = bx * s;
+                        arr[i+1] = by * s;
+                        arr[i+2] = bz * s;
+                    }
+                    landDots.geometry.attributes.position.needsUpdate = true;
+                    landDots.userData.wasWobbling = wobbleAmp > 0.001;
+                }
+            }
+
+            // Scan ring sweeps faster than the globe
+            scanRing.rotation.z += 0.01 * step;
+            scanRing.material.opacity = 0.35 + 0.25 * Math.abs(Math.sin(now * 0.0012));
+
+            // Twinkle stars
+            starsNear.material.opacity = 0.6 + 0.2 * Math.sin(now * 0.0011);
+            starsFar.material.opacity  = 0.4 + 0.15 * Math.sin(now * 0.0007 + 1.5);
 
             // Pulse city nodes & rings, breathe arcs
             globeGroup.children.forEach(obj => {
@@ -347,26 +582,35 @@
                 pk.t += pk.speed * dt;
 
                 if (pk.t >= 1) {
-                    // Arrived — spark burst
                     createSparks(pk.curve.getPoint(1));
                     globeGroup.remove(pk.spr);
                     pk.spr.material.dispose();
+                    disposePacketTrail(pk);
                     activePackets.splice(i, 1);
                     setTimeout(spawnPacket, 200 + Math.random() * 700);
                 } else {
-                    // Move along arc
-                    pk.spr.position.copy(pk.curve.getPoint(pk.t));
+                    const pos = pk.curve.getPoint(pk.t);
+                    pk.spr.position.copy(pos);
 
-                    // Last 1 second → switch to maroon
+                    // shift trail and set new head
+                    for (let k = TRAIL_LEN - 1; k > 0; k--) {
+                        pk.trailPos[k*3]   = pk.trailPos[(k-1)*3];
+                        pk.trailPos[k*3+1] = pk.trailPos[(k-1)*3+1];
+                        pk.trailPos[k*3+2] = pk.trailPos[(k-1)*3+2];
+                    }
+                    pk.trailPos[0] = pos.x; pk.trailPos[1] = pos.y; pk.trailPos[2] = pos.z;
+                    pk.trail.geometry.attributes.position.needsUpdate = true;
+
                     const msLeft = (1 - pk.t) / pk.speed;
                     const wantMaroon = msLeft < 1000;
 
-                    // Flip binary digits periodically OR on color change
                     if (wantMaroon !== pk.isMaroon || now >= pk.nextFlip) {
+                        if (wantMaroon !== pk.isMaroon) updateTrailColors({ ...pk, isMaroon: wantMaroon, trail: pk.trail, trailCol: pk.trailCol });
                         pk.isMaroon = wantMaroon;
-                        pk.draw(wantMaroon ? '#C41230' : '#88ccff');
+                        pk.draw(wantMaroon ? '#ff2a4d' : '#9fe3ff', wantMaroon ? '#C41230' : '#33e1ff');
                         pk.tex.needsUpdate = true;
                         pk.nextFlip = now + 160 + Math.random() * 120;
+                        updateTrailColors(pk);
                     }
                 }
             }
@@ -395,6 +639,21 @@
                 }
             }
 
+            // ── Shockwave rings ─────────────────────────────────────────────────
+            for (let i = activeWaves.length - 1; i >= 0; i--) {
+                const w = activeWaves[i];
+                w.age += dt;
+                const prog = w.age / w.maxAge;
+                if (prog >= 1) {
+                    globeGroup.remove(w.wave);
+                    w.wave.geometry.dispose(); w.wave.material.dispose();
+                    activeWaves.splice(i, 1);
+                } else {
+                    w.wave.scale.setScalar(1 + prog * 6);
+                    w.wave.material.opacity = Math.max(0, 0.8 * (1 - prog));
+                }
+            }
+
             renderer.render(scene, camera);
         }
         animate();
@@ -408,4 +667,4 @@
         });
     </script>
 </body>
-</html>
+    </html>
