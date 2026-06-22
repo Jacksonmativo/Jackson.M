@@ -383,6 +383,8 @@
     width: 100%;
     padding: 2rem 0 3rem;
     flex-shrink: 0;
+    perspective: 1800px;
+    perspective-origin: 50% 50%;
   }
   .cards-conveyor {
     display: flex;
@@ -391,6 +393,7 @@
     align-items: center;
     padding: 1rem 3rem;
     will-change: transform;
+    transform-style: preserve-3d;
   }
 
   /* progress bar */
@@ -437,7 +440,7 @@
     padding: 2rem;
     position: relative;
     overflow: hidden;
-    transition: border-color 0.3s;
+    transition: border-color 0.3s, transform 0.4s;
     cursor: default;
   }
   .service-card::before {
@@ -452,25 +455,25 @@
   .service-card:hover::before { opacity: 1; }
 
   .service-card.sideways {
-    transform: rotate(-4deg) translateY(20px);
+    transform: rotate(-4deg) translateY(20px) translateZ(-90px);
     transform-origin: bottom left;
     background: var(--surface2);
     border-color: rgba(255,61,107,0.2);
     transition: border-color 0.3s, transform 0.4s;
   }
   .service-card.sideways:hover {
-    transform: rotate(-1deg) translateY(0);
+    transform: rotate(-1deg) translateY(0) translateZ(40px);
     border-color: rgba(255,61,107,0.6);
   }
   .service-card.sideways-right {
-    transform: rotate(3.5deg) translateY(15px);
+    transform: rotate(3.5deg) translateY(15px) translateZ(-90px);
     transform-origin: bottom right;
     background: var(--surface2);
     border-color: rgba(180,255,90,0.15);
     transition: border-color 0.3s, transform 0.4s;
   }
   .service-card.sideways-right:hover {
-    transform: rotate(1deg) translateY(0);
+    transform: rotate(1deg) translateY(0) translateZ(40px);
     border-color: rgba(180,255,90,0.5);
   }
 
@@ -790,6 +793,92 @@
     transition: opacity 0.3s;
   }
 
+  /* ============================================================
+     SCROLL ENHANCEMENTS
+     1) cards entering from different directions
+     2) cards receding into depth as they leave
+     3) per-letter collapse / pile on headings
+     ============================================================ */
+
+  /* (1) Directional entry — baseline (works everywhere via IntersectionObserver).
+        Each variant only changes the *starting* transform; .revealed clears it. */
+  .reveal.from-left  { transform: translateX(-70px); }
+  .reveal.from-right { transform: translateX(70px); }
+  .reveal.from-top   { transform: translateY(-50px); }
+  .reveal.from-deep  { transform: scale(0.78); }
+  /* plain .reveal still rises from the bottom — that's the "expected" one,
+     kept on a few items so the page isn't ALL surprise. */
+
+  /* The entry transform the scroll-driven layer (below) reuses per direction. */
+  .depth            { --enter: translateY(60px); }
+  .depth.from-left  { --enter: translateX(-90px) rotateY(20deg); }
+  .depth.from-right { --enter: translateX(90px)  rotateY(-20deg); }
+  .depth.from-top   { --enter: translateY(-60px); }
+  .depth.from-deep  { --enter: translateZ(-340px); }
+
+  /* perspective container so cards can actually travel in Z */
+  .serve-grid, .why-grid, .engage-cards {
+    perspective: 1500px;
+    perspective-origin: 50% 35%;
+  }
+
+  /* (2) Progressive enhancement: scroll-linked entry + recede-into-the-screen exit.
+        Guarded so non-supporting browsers fall back to the entry-only reveal above. */
+  @supports (animation-timeline: view()) {
+    .depth {
+      opacity: 1;            /* cancel the hidden baseline state */
+      transform: none;
+      transition: none;      /* hand control to the scroll timeline */
+      animation: depth-life linear both;
+      animation-timeline: view();
+      animation-range: entry 0% exit 100%;
+      will-change: transform, opacity;
+      backface-visibility: hidden;
+    }
+    @keyframes depth-life {
+      entry   0% { opacity: 0; transform: var(--enter, translateY(60px)); }
+      entry 100% { opacity: 1; transform: none; }
+      exit    0% { opacity: 1; transform: none; }
+      /* the card sinks back into the screen as it scrolls away */
+      exit  100% { opacity: 0; transform: translateZ(-700px) translateY(-35px) rotateX(14deg); }
+    }
+  }
+
+  /* (3) Letter collapse / pile — characters fly together and stack
+        as the heading scrolls past. JS splits the text + measures offsets. */
+  .pile-text { view-timeline-name: --pile; view-timeline-axis: block; }
+  .pile-char { display: inline-block; }
+  @supports (animation-timeline: view()) {
+    .pile-char {
+      animation: pile-life linear both;
+      animation-timeline: --pile;
+      animation-range: entry 0% exit 100%;
+      will-change: transform, opacity;
+    }
+    @keyframes pile-life {
+      /* assemble: letters drift in from scattered positions */
+      entry   0% { opacity: 0; transform: translate(var(--inx,0), 0.6em) rotate(var(--inr,0)); }
+      entry  55% { opacity: 1; }
+      entry 100% { transform: translate(0,0) rotate(0); }
+      /* hold while fully in view */
+      exit    0% { opacity: 1; transform: translate(0,0) rotate(0); }
+      /* collapse: each letter converges to the heading centre and piles up */
+      exit  100% { opacity: 0.12; transform: translate(var(--dx,0), var(--dy,0)) rotate(var(--r,0)) scale(0.82); }
+    }
+  }
+
+  /* Respect users who don't want motion */
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+    .depth, .pile-char {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+    .service-card.sideways,
+    .service-card.sideways-right { transform: none; }
+  }
+
   @media (max-width: 768px) {
     nav { padding: 1rem 1.5rem; }
     .nav-links { display: none; }
@@ -798,6 +887,9 @@
     .engage-cards { grid-template-columns: 1fr; }
     h1.hero-name { font-size: 4.5rem; }
     .cards-track-wrapper { padding: 3rem 1.5rem 2rem; }
+    /* lighten the 3D pull on small screens so cards don't slide off */
+    .depth.from-left  { --enter: translateX(-40px); }
+    .depth.from-right { --enter: translateX(40px); }
   }
 </style>
 </head>
@@ -819,11 +911,11 @@
   <div class="hero-orb hero-orb-2"></div>
   <p class="hero-tag">Cybersecurity Specialist · Ethical Hacker</p>
   <p class="hero-subtitle">
-    Trusted cybersecurity partner for <strong>startups, SMEs & growing businesses</strong>.
+    Trusted cybersecurity partner for <strong>startups, SMEs &amp; growing businesses</strong>.
     Enterprise-grade security thinking built for founder timelines, startup budgets, and the way your team actually works.
   </p>
   <div class="hero-ctas">
-    <a href="#services" class="btn-primary">Explore Services</a>
+    <a href="#services-scroll-container" class="btn-primary">Explore Services</a>
     <a href="#contact" class="btn-ghost">Book Discovery Call</a>
   </div>
   <div class="hero-scroll-hint">
@@ -867,36 +959,28 @@
     <div class="section-line"></div>
   </div>
   <div class="serve-grid">
-    <div class="serve-item reveal reveal-delay-1">
-      <!-- <span class="serve-icon">🚀</span> -->
+    <div class="serve-item reveal depth from-left reveal-delay-1">
       <p>Early-stage startups and founders</p>
     </div>
-    <div class="serve-item reveal reveal-delay-1">
-      <!-- <span class="serve-icon">📱</span> -->
+    <div class="serve-item reveal depth from-top reveal-delay-1">
       <p>Mobile and web application teams</p>
     </div>
-    <div class="serve-item reveal reveal-delay-2">
-      <!-- <span class="serve-icon">☁️</span> -->
+    <div class="serve-item reveal depth from-right reveal-delay-2">
       <p>Cloud-native and SaaS businesses</p>
     </div>
-    <div class="serve-item reveal reveal-delay-2">
-      <!-- <span class="serve-icon">🔐</span> -->
+    <div class="serve-item reveal depth from-deep reveal-delay-2">
       <p>SMEs managing sensitive client or patient data</p>
     </div>
-    <div class="serve-item reveal reveal-delay-3">
-      <!-- <span class="serve-icon">🔗</span> -->
+    <div class="serve-item reveal depth from-right reveal-delay-3">
       <p>API and third-party integration projects</p>
     </div>
-    <div class="serve-item reveal reveal-delay-3">
-      <!-- <span class="serve-icon">💳</span> -->
+    <div class="serve-item reveal depth from-left reveal-delay-3">
       <p>Fintech, healthtech, and legaltech ventures</p>
     </div>
-    <div class="serve-item reveal reveal-delay-4">
-      <!-- <span class="serve-icon">🏢</span> -->
+    <div class="serve-item reveal depth from-top reveal-delay-4">
       <p>Businesses preparing for enterprise sales or audits</p>
     </div>
-    <div class="serve-item reveal reveal-delay-4">
-      <!-- <span class="serve-icon">🎯</span> -->
+    <div class="serve-item reveal depth from-deep reveal-delay-4">
       <p>Organisations seeking ISO 27001 or SOC 2 certification</p>
     </div>
   </div>
@@ -918,7 +1002,7 @@
 </div>
 
 <!-- SERVICES — scroll-driven horizontal conveyor -->
-<div id="services-scroll-container" id="services">
+<div id="services-scroll-container">
   <div id="services-sticky-outer">
     <div class="services-header-row">
       <div class="section-header reveal">
@@ -933,7 +1017,7 @@
 
         <div class="service-card">
           <p class="card-num">01 — SPDA</p>
-          <h3 class="card-title">Security & Privacy by Design Assurance</h3>
+          <h3 class="card-title">Security &amp; Privacy by Design Assurance</h3>
           <p class="card-tagline">Risks caught before they cost you</p>
           <p class="card-desc">Rigorous technical evaluations of your SPDA processes. Gap analysis against ISO 27001, GDPR, and sector standards. Actionable remediation roadmap with prioritised findings.</p>
           <div class="card-tags"><span class="card-tag">ISO 27001</span><span class="card-tag">GDPR</span><span class="card-tag">SOC 2</span></div>
@@ -951,7 +1035,7 @@
 
         <div class="service-card">
           <p class="card-num">03 — SASA</p>
-          <h3 class="card-title">Security Assessment of Systems & APIs</h3>
+          <h3 class="card-title">Security Assessment of Systems &amp; APIs</h3>
           <p class="card-tagline">Know your attack surface</p>
           <p class="card-desc">Automated scanning paired with expert-led manual analysis. Every finding is verified, contextualised, and CVSS-scored. Web apps, mobile, REST, GraphQL, gRPC.</p>
           <div class="card-tags"><span class="card-tag">OWASP</span><span class="card-tag">CVSS</span><span class="card-tag">API</span></div>
@@ -969,7 +1053,7 @@
 
         <div class="service-card">
           <p class="card-num">05 — PENTEST</p>
-          <h3 class="card-title">Penetration Testing Internal & External</h3>
+          <h3 class="card-title">Penetration Testing Internal &amp; External</h3>
           <p class="card-tagline">Real-world attack simulation</p>
           <p class="card-desc">Black-box, grey-box and white-box testing. Every finding manually verified — no false-positive noise, no automated-scan dumps. Clear actionable reports with step-by-step remediation.</p>
           <div class="card-tags"><span class="card-tag">Black-box</span><span class="card-tag">Grey-box</span><span class="card-tag">AD</span></div>
@@ -977,8 +1061,8 @@
         </div>
 
         <div class="service-card sideways">
-          <p class="card-num">06 — TM&RI</p>
-          <h3 class="card-title">Threat Modelling & Risk Integration</h3>
+          <p class="card-num">06 — TM&amp;RI</p>
+          <h3 class="card-title">Threat Modelling &amp; Risk Integration</h3>
           <p class="card-tagline">Proactive lifecycle-wide protection</p>
           <p class="card-desc">Proactive threat identification integrated into your development lifecycle so risk decisions are made early — not after an incident forces your hand.</p>
           <div class="card-tags"><span class="card-tag">STRIDE</span><span class="card-tag">Lifecycle</span></div>
@@ -996,7 +1080,7 @@
 
         <div class="service-card sideways-right">
           <p class="card-num">08 — AMST</p>
-          <h3 class="card-title">Automated & Manual Security Testing</h3>
+          <h3 class="card-title">Automated &amp; Manual Security Testing</h3>
           <p class="card-tagline">Comprehensive coverage, every time</p>
           <p class="card-desc">Combines tooling automation with deep manual analysis for complete coverage. Business-logic flaws that scanners miss are caught through expert hands-on review.</p>
           <div class="card-tags"><span class="card-tag">DAST</span><span class="card-tag">SAST</span><span class="card-tag">Manual</span></div>
@@ -1005,7 +1089,7 @@
 
         <div class="service-card">
           <p class="card-num">11 — CDS</p>
-          <h3 class="card-title">Compliance & Deliverable Standards</h3>
+          <h3 class="card-title">Compliance &amp; Deliverable Standards</h3>
           <p class="card-tagline">Meet every regulatory bar</p>
           <p class="card-desc">Failing compliance means lost contracts, fines, and reputational damage. Audit-ready documentation packs, evidence artefacts, and Kenya Data Protection Act 2019 compliance.</p>
           <div class="card-tags"><span class="card-tag">ISO 27001</span><span class="card-tag">PCI-DSS</span><span class="card-tag">KDPA</span></div>
@@ -1027,46 +1111,46 @@
 <section id="why">
   <div class="section-header reveal">
     <span class="section-num">03</span>
-    <h2 class="section-title">Why Work With Me</h2>
+    <h2 class="section-title pile-text">Why Work With Me</h2>
     <div class="section-line"></div>
   </div>
   <div class="why-grid">
-    <div class="why-item reveal">
+    <div class="why-item reveal depth from-left">
       <div class="why-accent-line"></div>
       <h3>Startup-Native Mindset</h3>
       <p>Security advice calibrated to your actual risk — not a generic enterprise checklist. I understand the trade-offs founders face and help you make informed decisions, not fearful ones.</p>
     </div>
-    <div class="why-item reveal reveal-delay-1">
+    <div class="why-item reveal depth from-right reveal-delay-1">
       <div class="why-accent-line"></div>
       <h3>End-to-End Coverage</h3>
       <p>From the first design sketch to post-launch monitoring, one expert across the full product lifecycle. No handoffs, no gaps between advisors, no context lost between engagements.</p>
     </div>
-    <div class="why-item reveal reveal-delay-2">
+    <div class="why-item reveal depth from-deep reveal-delay-2">
       <div class="why-accent-line"></div>
       <h3>Plain-Language Reporting</h3>
       <p>Every finding is explained clearly for both technical and non-technical stakeholders. Reports are structured so your CTO and CEO can both act on them.</p>
     </div>
-    <div class="why-item reveal reveal-delay-3">
+    <div class="why-item reveal depth from-right reveal-delay-3">
       <div class="why-accent-line"></div>
       <h3>Regulatory Awareness</h3>
       <p>Deep familiarity with GDPR, the Kenya Data Protection Act 2019, PCI-DSS, ISO 27001, SOC 2, and emerging African data protection frameworks critical for businesses operating across borders.</p>
     </div>
-    <div class="why-item reveal">
+    <div class="why-item reveal depth from-left">
       <div class="why-accent-line"></div>
       <h3>Verified Findings Only</h3>
       <p>Every vulnerability in a report is manually verified before inclusion. No automated-scan dumps, only confirmed, contextualised, exploitable findings with real business impact.</p>
     </div>
-    <div class="why-item reveal reveal-delay-1">
+    <div class="why-item reveal depth from-top reveal-delay-1">
       <div class="why-accent-line"></div>
       <h3>Remediation Partnership</h3>
       <p>The engagement does not end at report delivery. I am available to support your team through remediation — answering questions, reviewing fixes, and validating closure.</p>
     </div>
-    <div class="why-item reveal reveal-delay-2">
+    <div class="why-item reveal depth from-deep reveal-delay-2">
       <div class="why-accent-line"></div>
       <h3>Flexible Engagement Models</h3>
       <p>Project-based, retainer, or on-demand — structured around how you actually work. No minimum commitment periods or rigid enterprise contracts.</p>
     </div>
-    <div class="why-item reveal reveal-delay-3">
+    <div class="why-item reveal depth from-right reveal-delay-3">
       <div class="why-accent-line"></div>
       <h3>Actionable, Not Just Advisory</h3>
       <p>Every engagement ends with clear, prioritised, executable steps. Not a 200-page report that sits on a shelf — a roadmap your team can act on from day one.</p>
@@ -1082,17 +1166,17 @@
     <div class="section-line"></div>
   </div>
   <div class="engage-cards">
-    <div class="engage-card reveal">
+    <div class="engage-card reveal depth from-left">
       <span class="engage-num">01</span>
       <h3>Project-Based</h3>
       <p>A defined scope, timeline, and deliverable set. Ideal for penetration tests, security assessments, architecture reviews, and pre-launch security gates. Fixed price agreed upfront — no billing surprises.</p>
     </div>
-    <div class="engage-card reveal reveal-delay-2">
+    <div class="engage-card reveal depth from-deep reveal-delay-2">
       <span class="engage-num">02</span>
       <h3>Retainer</h3>
       <p>Ongoing advisory, testing, and programme oversight on a monthly or quarterly basis. Ideal for virtual CISO services, continuous testing, compliance programme management, and teams who want security embedded in their regular operations.</p>
     </div>
-    <div class="engage-card reveal reveal-delay-4">
+    <div class="engage-card reveal depth from-right reveal-delay-4">
       <span class="engage-num">03</span>
       <h3>On-Demand</h3>
       <p>Flexible, responsive support activated when you need it — a specific review, a quick consult, or a rapid response to a security concern. No commitment required beyond the immediate need.</p>
@@ -1104,56 +1188,56 @@
 <section id="process">
   <div class="section-header reveal">
     <span class="section-num">05</span>
-    <h2 class="section-title">How We Work Together</h2>
+    <h2 class="section-title pile-text">How We Work Together</h2>
     <div class="section-line"></div>
   </div>
   <div class="process-list">
-    <div class="process-step reveal">
+    <div class="process-step reveal from-left">
       <div class="process-step-num">01</div>
       <div class="process-step-content">
         <h3>Discovery Call</h3>
         <p>A free 30-minute call to understand your business, tech stack, current security posture, and goals. No pitch — just a genuine conversation to determine whether and how I can help.</p>
       </div>
     </div>
-    <div class="process-step reveal reveal-delay-1">
+    <div class="process-step reveal from-right reveal-delay-1">
       <div class="process-step-num">02</div>
       <div class="process-step-content">
-        <h3>Scope & Proposal</h3>
+        <h3>Scope &amp; Proposal</h3>
         <p>A clear, written proposal covering services to be delivered, timeline and milestones, specific deliverables, pricing, and any prerequisites.</p>
       </div>
     </div>
-    <div class="process-step reveal reveal-delay-2">
+    <div class="process-step reveal from-left reveal-delay-2">
       <div class="process-step-num">03</div>
       <div class="process-step-content">
         <h3>Engagement Kick-off</h3>
         <p>A structured onboarding session covering access provisioning, rules of engagement, communication cadence, escalation paths, and key contacts on both sides.</p>
       </div>
     </div>
-    <div class="process-step reveal reveal-delay-3">
+    <div class="process-step reveal from-right reveal-delay-3">
       <div class="process-step-num">04</div>
       <div class="process-step-content">
         <h3>Delivery</h3>
         <p>Hands-on security work delivered to agreed timelines. Regular progress updates — weekly check-ins or written summaries. No disappearing for weeks and reappearing with a report.</p>
       </div>
     </div>
-    <div class="process-step reveal reveal-delay-1">
+    <div class="process-step reveal from-left reveal-delay-1">
       <div class="process-step-num">05</div>
       <div class="process-step-content">
         <h3>Reporting</h3>
         <p>Detailed findings report with executive summary, technical detail, risk-ranked remediation roadmap, and supporting evidence. Delivered with a live findings walkthrough session.</p>
       </div>
     </div>
-    <div class="process-step reveal reveal-delay-2">
+    <div class="process-step reveal from-right reveal-delay-2">
       <div class="process-step-num">06</div>
       <div class="process-step-content">
         <h3>Remediation Support</h3>
         <p>Available throughout your remediation phase to answer questions, review proposed fixes, and validate that vulnerabilities have been correctly addressed before formal re-test.</p>
       </div>
     </div>
-    <div class="process-step reveal reveal-delay-3">
+    <div class="process-step reveal from-left reveal-delay-3">
       <div class="process-step-num">07</div>
       <div class="process-step-content">
-        <h3>Re-Test & Close-out</h3>
+        <h3>Re-Test &amp; Close-out</h3>
         <p>A re-test confirms critical and high findings have been remediated. A close-out report documents the final security posture and confirms engagement completion.</p>
       </div>
     </div>
@@ -1170,7 +1254,7 @@
     Your Business?
   </h2>
   <div class="contact-meta reveal">
-    <p>Jackson Mativo — Cybersecurity Specialist, SWE & Ethical Hacker</p>
+    <p>Jackson Mativo — Cybersecurity Specialist, SWE &amp; Ethical Hacker</p>
     <p><a href="mailto:Jacksonmativo21@gmail.com">Jacksonmativo21@gmail.com</a></p>
     <p><a href="tel:+254702188406">+254 702 188 406</a></p>
   </div>
@@ -1184,7 +1268,7 @@
 <!-- FOOTER -->
 <footer>
   <span class="foot-logo">Jackson Mativo</span>
-  <p>Trusted cybersecurity partner for startups, SMEs & growing businesses</p>
+  <p>Trusted cybersecurity partner for startups, SMEs &amp; growing businesses</p>
   <p style="font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--muted);">Nairobi, Kenya · 2025</p>
 </footer>
 
@@ -1196,12 +1280,63 @@ document.addEventListener('mousemove', e => {
   glow.style.top = e.clientY + 'px';
 });
 
-// ── SCROLL REVEAL ──
+// ── SCROLL REVEAL (baseline for directional entry; also a fallback) ──
 const reveals = document.querySelectorAll('.reveal');
 const revealObs = new IntersectionObserver(entries => {
   entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('revealed'); });
 }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
 reveals.forEach(el => revealObs.observe(el));
+
+// ── LETTER COLLAPSE / PILE ──
+// Splits target headings into per-character spans, then measures each
+// character's offset from the heading centre so the CSS animation can
+// converge them into a stack as the heading scrolls past.
+(function () {
+  const targets = [...document.querySelectorAll('.pile-text')];
+  if (!targets.length) return;
+
+  function split(el) {
+    const text = el.textContent;
+    el.setAttribute('aria-label', text.trim());  // keep it readable for screen readers
+    el.textContent = '';
+    [...text].forEach(ch => {
+      const s = document.createElement('span');
+      s.className = 'pile-char';
+      s.setAttribute('aria-hidden', 'true');
+      s.textContent = (ch === ' ') ? '\u00A0' : ch;
+      el.appendChild(s);
+    });
+  }
+
+  function measure(el) {
+    const chars = [...el.querySelectorAll('.pile-char')];
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    chars.forEach((s, i) => {
+      const b = s.getBoundingClientRect();
+      const scx = b.left + b.width / 2;
+      const scy = b.top + b.height / 2;
+      const dir = (i % 2) ? 1 : -1;
+      // collapse target: 90% of the way to centre -> heavy overlap / pile
+      s.style.setProperty('--dx', ((cx - scx) * 0.9).toFixed(1) + 'px');
+      s.style.setProperty('--dy', ((cy - scy) + dir * 8).toFixed(1) + 'px');
+      s.style.setProperty('--r',  (dir * (5 + (i % 4) * 3)) + 'deg');
+      // entry scatter: where each letter drifts in from
+      s.style.setProperty('--inx', (dir * (40 + i * 6)) + 'px');
+      s.style.setProperty('--inr', (dir * 10) + 'deg');
+    });
+  }
+
+  targets.forEach(split);
+  const remeasure = () => targets.forEach(measure);
+  remeasure();
+  // fonts change letter widths after load -> measure again
+  window.addEventListener('load', remeasure);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
+  let t;
+  window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(remeasure, 150); });
+})();
 
 // ── LETTER ZOOM SCROLL EFFECT ──
 const letterSection = document.getElementById('letter-reveal');
@@ -1215,22 +1350,18 @@ window.addEventListener('scroll', () => {
   const sectionHeight = letterSection.offsetHeight;
   const viewH = window.innerHeight;
 
-  // progress 0→1 through the sticky section
   const scrolled = -rect.top;
   const maxScroll = sectionHeight - viewH;
   const progress = Math.max(0, Math.min(1, scrolled / maxScroll));
 
-  // Letter cycling — change letter every 12.5% progress
   const letterIdx = Math.min(letters.length - 1, Math.floor(progress * letters.length));
   if (letterIdx !== lastLetterIdx) {
     lastLetterIdx = letterIdx;
     letterBg.textContent = letters[letterIdx];
-    // Briefly pop opacity
     letterBg.style.opacity = '1';
     setTimeout(() => { letterBg.style.opacity = ''; }, 80);
   }
 
-  // Scale from 1x to ~3x as we scroll, then back down in last 20%
   let scale;
   if (progress < 0.7) {
     scale = 1 + progress * 2.5;
@@ -1243,13 +1374,11 @@ window.addEventListener('scroll', () => {
   letterBg.style.top = '50%';
   letterBg.style.position = 'absolute';
 
-  // Opacity of bg letter
   const bgOpacity = progress < 0.5
     ? 1 - progress * 0.6
     : 0.4 + (progress - 0.5) * 0.6;
   letterBg.style.webkitTextStroke = `1px rgba(0,229,255,${bgOpacity * 0.15})`;
 
-  // Show content card when letter fills screen (progress ~0.45 to 0.85)
   const contentVisible = progress > 0.4 && progress < 0.88;
   if (contentVisible) {
     letterContent.classList.add('visible');
@@ -1263,65 +1392,42 @@ const scrollContainer = document.getElementById('services-scroll-container');
 const conveyor = document.getElementById('cardsConveyor');
 const conveyorFill = document.getElementById('conveyorFill');
 const conveyorCount = document.getElementById('conveyorCount');
+let conveyorScrollHandler = null;
 
 function initConveyor() {
   const viewW = window.innerWidth;
   const conveyorW = conveyor.scrollWidth;
-  // How far we need to translate: full width minus one viewport
-  const maxTranslate = conveyorW - viewW + 96; // 96px = padding compensation
+  const maxTranslate = conveyorW - viewW + 96;
 
-  // The scroll container height = travel distance + 1 viewport
   scrollContainer.style.height = (maxTranslate + window.innerHeight) + 'px';
 
   const totalCards = conveyor.querySelectorAll('.service-card').length;
 
-  window.addEventListener('scroll', onConveyorScroll);
+  if (conveyorScrollHandler) window.removeEventListener('scroll', conveyorScrollHandler);
 
-  function onConveyorScroll() {
+  conveyorScrollHandler = function onConveyorScroll() {
     const rect = scrollContainer.getBoundingClientRect();
-    const sectionTop = -rect.top;
-    const sectionScroll = sectionTop;
+    const sectionScroll = -rect.top;
     const maxScroll = scrollContainer.offsetHeight - window.innerHeight;
 
     if (sectionScroll < 0 || sectionScroll > maxScroll) return;
 
     const progress = Math.max(0, Math.min(1, sectionScroll / maxScroll));
 
-    // Slide cards from right (0) to left (-maxTranslate)
     const tx = -progress * maxTranslate;
     conveyor.style.transform = `translateX(${tx}px)`;
 
-    // Progress bar
     conveyorFill.style.width = (progress * 100) + '%';
 
-    // Card counter — which card is most in view
     const cardIdx = Math.min(totalCards - 1, Math.floor(progress * totalCards));
     conveyorCount.textContent = (cardIdx + 1) + ' / ' + totalCards;
-  }
+  };
+
+  window.addEventListener('scroll', conveyorScrollHandler);
 }
 
-// Wait for fonts/layout
 window.addEventListener('load', initConveyor);
-window.addEventListener('resize', () => {
-  window.removeEventListener('scroll', window._conveyorScroll);
-  initConveyor();
-});
-
-// ── NAV ACTIVE STATES ──
-const sections = document.querySelectorAll('section[id], #hero');
-const navLinks = document.querySelectorAll('.nav-links a');
-const navObs = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      navLinks.forEach(a => {
-        a.style.color = a.getAttribute('href') === '#' + e.target.id
-          ? 'var(--accent)'
-          : 'var(--muted)';
-      });
-    }
-  });
-}, { threshold: 0.3 });
-document.querySelectorAll('section[id]').forEach(s => navObs.observe(s));
+window.addEventListener('resize', initConveyor);
 </script>
 </body>
-</html>
+  </html>
