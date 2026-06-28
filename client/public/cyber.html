@@ -844,27 +844,23 @@
     }
   }
 
-  /* (3) Letter collapse / pile — characters fly together and stack
-        as the heading scrolls past. JS splits the text + measures offsets. */
-  .pile-text { view-timeline-name: --pile; view-timeline-axis: block; }
-  .pile-char { display: inline-block; }
-  @supports (animation-timeline: view()) {
-    .pile-char {
-      animation: pile-life linear both;
-      animation-timeline: --pile;
-      animation-range: entry 0% exit 100%;
-      will-change: transform, opacity;
-    }
-    @keyframes pile-life {
-      /* assemble: letters drift in from scattered positions */
-      entry   0% { opacity: 0; transform: translate(var(--inx,0), 0.6em) rotate(var(--inr,0)); }
-      entry  55% { opacity: 1; }
-      entry 100% { transform: translate(0,0) rotate(0); }
-      /* hold while fully in view */
-      exit    0% { opacity: 1; transform: translate(0,0) rotate(0); }
-      /* collapse: each letter converges to the heading centre and piles up */
-      exit  100% { opacity: 0.12; transform: translate(var(--dx,0), var(--dy,0)) rotate(var(--r,0)) scale(0.82); }
-    }
+  /* (3) Letter collapse / pile — driven by JS scroll progress.
+        Two progress values are set on each heading by the script:
+          --a : 1 = letters scattered/entering, 0 = assembled (the "fly-in")
+          --c : 0 = assembled,                  1 = collapsed into a pile
+        Each character builds its own transform from its measured offsets
+        (--dx/--dy/--r to reach the pile, --inx/--inr for the entry scatter)
+        times those progress values, so it works in every browser. */
+  .pile-char {
+    display: inline-block;
+    will-change: transform, opacity;
+    transform:
+      translate(calc(var(--inx, 0px) * var(--a, 0)), calc(0.7em * var(--a, 0)))
+      rotate(calc(var(--inr, 0deg) * var(--a, 0)))
+      translate(calc(var(--dx, 0px) * var(--c, 0)), calc(var(--dy, 0px) * var(--c, 0)))
+      rotate(calc(var(--r, 0deg) * var(--c, 0)))
+      scale(calc(1 - 0.22 * var(--c, 0)));
+    opacity: calc((1 - var(--a, 0) * 0.9) * (1 - var(--c, 0) * 0.9));
   }
 
   /* Respect users who don't want motion */
@@ -1288,16 +1284,18 @@ const revealObs = new IntersectionObserver(entries => {
 reveals.forEach(el => revealObs.observe(el));
 
 // ── LETTER COLLAPSE / PILE ──
-// Splits target headings into per-character spans, then measures each
-// character's offset from the heading centre so the CSS animation can
-// converge them into a stack as the heading scrolls past.
+// Splits target headings into per-character spans, measures each character's
+// offset from the heading centre, then maps the heading's travel through the
+// viewport to two progress values (--a assemble, --c collapse) every frame.
 (function () {
   const targets = [...document.querySelectorAll('.pile-text')];
   if (!targets.length) return;
 
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   function split(el) {
     const text = el.textContent;
-    el.setAttribute('aria-label', text.trim());  // keep it readable for screen readers
+    el.setAttribute('aria-label', text.trim());  // keep words readable for screen readers
     el.textContent = '';
     [...text].forEach(ch => {
       const s = document.createElement('span');
@@ -1309,6 +1307,9 @@ reveals.forEach(el => revealObs.observe(el));
   }
 
   function measure(el) {
+    // neutralise transforms so we read the natural letter positions
+    el.style.setProperty('--a', '0');
+    el.style.setProperty('--c', '0');
     const chars = [...el.querySelectorAll('.pile-char')];
     const r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2;
@@ -1318,22 +1319,55 @@ reveals.forEach(el => revealObs.observe(el));
       const scx = b.left + b.width / 2;
       const scy = b.top + b.height / 2;
       const dir = (i % 2) ? 1 : -1;
-      // collapse target: 90% of the way to centre -> heavy overlap / pile
-      s.style.setProperty('--dx', ((cx - scx) * 0.9).toFixed(1) + 'px');
-      s.style.setProperty('--dy', ((cy - scy) + dir * 8).toFixed(1) + 'px');
-      s.style.setProperty('--r',  (dir * (5 + (i % 4) * 3)) + 'deg');
-      // entry scatter: where each letter drifts in from
-      s.style.setProperty('--inx', (dir * (40 + i * 6)) + 'px');
-      s.style.setProperty('--inr', (dir * 10) + 'deg');
+      // where the letter ends up in the pile (≈92% of the way to centre)
+      s.style.setProperty('--dx', ((cx - scx) * 0.92).toFixed(1) + 'px');
+      s.style.setProperty('--dy', ((cy - scy) + dir * 10).toFixed(1) + 'px');
+      s.style.setProperty('--r',  (dir * (6 + (i % 4) * 4)) + 'deg');
+      // where the letter flies in from on entry
+      s.style.setProperty('--inx', (dir * (55 + i * 9)) + 'px');
+      s.style.setProperty('--inr', (dir * 12) + 'deg');
+    });
+  }
+
+  function smoothstep(e0, e1, x) {
+    const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
+    return t * t * (3 - 2 * t);
+  }
+
+  function update() {
+    const vh = window.innerHeight;
+    targets.forEach(el => {
+      const r = el.getBoundingClientRect();
+      // p = 0 when heading first enters at the bottom, 1 when it leaves the top
+      const p = Math.max(0, Math.min(1, (vh - r.top) / (vh + r.height)));
+      const a = 1 - smoothstep(0.04, 0.40, p);  // scattered -> assembled
+      const c = smoothstep(0.58, 0.95, p);       // assembled -> piled
+      el.style.setProperty('--a', a.toFixed(3));
+      el.style.setProperty('--c', c.toFixed(3));
     });
   }
 
   targets.forEach(split);
-  const remeasure = () => targets.forEach(measure);
+
+  function remeasure() {
+    targets.forEach(measure);
+    if (reduceMotion) {
+      targets.forEach(el => { el.style.setProperty('--a', '0'); el.style.setProperty('--c', '0'); });
+    } else {
+      update();
+    }
+  }
   remeasure();
-  // fonts change letter widths after load -> measure again
   window.addEventListener('load', remeasure);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
+
+  if (!reduceMotion) {
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (!ticking) { requestAnimationFrame(() => { update(); ticking = false; }); ticking = true; }
+    }, { passive: true });
+  }
+
   let t;
   window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(remeasure, 150); });
 })();
@@ -1430,4 +1464,4 @@ window.addEventListener('load', initConveyor);
 window.addEventListener('resize', initConveyor);
 </script>
 </body>
-  </html>
+</html>
